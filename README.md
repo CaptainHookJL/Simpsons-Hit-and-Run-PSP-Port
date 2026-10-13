@@ -18,8 +18,11 @@ showed visible geometry popping while driving. Enabling GE clip planes alone did
 not resolve the reported holes in the road. This build clips textured world
 triangles against the camera's near/far and side planes in software before GPU
 submission. The visible polygons retain interpolated UVs and vertex colours.
-The road-hole correction and its FPS still need a hardware check. The imported
-area remains a bounded scenery sample.
+The user confirmed that software-clipped build `116afb7` removes the holes but
+runs at 30–60 FPS. This version caches mesh bounds, draws fully visible meshes
+from their original buffers, and clips only triangles at relevant view planes.
+Its hardware performance still needs checking. The imported area remains a
+bounded scenery sample.
 
 ## Build
 
@@ -71,6 +74,10 @@ The HUD reports `Software clipping ON` when the new rendering path is active.
 Its buffers are allocated once at startup (about 3.1 MiB maximum vertex scratch
 for this sample); frames reuse them. Geometry outside the view is rejected,
 while triangles crossing view planes are split instead of being dropped.
+Bounds are computed once at startup. In 60 test views, the optimized path checks
+an average of 4,659 of 19,311 vertices and generates/copies 2,490 vertices; another
+4,081 are drawn directly. Its output is compared vertex-by-vertex against the
+full clipper to verify the optimization retains visible geometry and UVs.
 
 ## Checks
 
@@ -105,7 +112,7 @@ archive. Its README points to a separate archive for additional build files.
 
 Next milestones:
 
-1. Check the software-clipped build on PSP, watching the road behind the car and screen edges, and FPS.
+1. Check the optimized clipping build on PSP, watching for stable FPS and intact roads.
 2. Download/inventory the supplied additional archive when its storage server is accessible.
 3. Extend the Pure3D importer with vehicle hierarchy support,
    then replace the placeholder car with one original vehicle.

@@ -113,9 +113,10 @@ static void render(const Car *car)
             uint32_t previous_texture=0xffffffffu;
             uint32_t batch_count=software_clip_active?clipped_scene.batch_count:textured_scene.batch_count;
             TextureBatch *batches=software_clip_active?clipped_scene.batches:textured_scene.batches;
-            TexturedVertex *vertices=software_clip_active?clipped_scene.vertices:textured_scene.vertices;
             for (uint32_t i=0;i<batch_count;++i) {
                 TextureBatch b=batches[i];
+                TexturedVertex *vertices=software_clip_active && !clipped_scene.original[i]?
+                                        clipped_scene.vertices:textured_scene.vertices;
                 if (b.texture!=previous_texture) {
                     SceneTexture t=textured_scene.textures[b.texture];
                     sceGuTexImage(0,t.width,t.height,t.width,t.pixels);
