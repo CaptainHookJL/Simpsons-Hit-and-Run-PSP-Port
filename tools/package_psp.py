@@ -59,13 +59,17 @@ Home/PS: quit
 
 The screen shows speed, controls, and scenery load status. This package includes
 untextured original Springfield geometry near the Simpsons house. The car remains
-a placeholder; scenery collision, terrain-following, missions, sound, and on-foot
-gameplay are not implemented. Driving beyond the imported area leaves the scenery.
+a placeholder. Ground following and approximate scenery collision are enabled
+when the grid loads; the screen shows Collision ON. The car stops at walls and
+the edge of imported ground. Missions, sound, and on-foot gameplay are absent.
 If scenery is missing or invalid, the screen identifies the test-ground fallback.
 
-The build and native driving tests passed. Hardware and PPSSPP execution
-have not yet been verified. If launch fails, record your PSP model, firmware
-version, and exact error code so the failure can be diagnosed.
+The previous scenery build was reported to run at 60 FPS on PSP-3000 with ARK 5.
+The new collision build passes native tests but still needs hardware validation.
+Drive toward the house, reverse away from a wall, and watch the FPS counter.
+Collision approximates the car with two spheres and uses rendered geometry,
+not original collision volumes. The camera can still clip through scenery.
+If launch fails, record your PSP model, firmware and exact error code.
 """
 args.output.parent.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED) as archive:

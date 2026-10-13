@@ -12,7 +12,9 @@ details](SOURCE_REUSE.md) for attribution, changes, and the boundaries of this r
 [Download the installation ZIP](https://github.com/CaptainHookJL/Simpsons-Hit-and-Run-PSP-Port/raw/refs/heads/main/downloads/SHAR-PSP-Prototype.zip).
 Extract it and copy the `PSP` folder to your Memory Stick's root, then launch
 SHAR PSP from Game > Memory Stick. Requires custom firmware supporting unsigned
-homebrew. This is a driving prototype; physical PSP execution is not yet verified.
+homebrew. The previous scenery build (`e7f80f7`) was reported by the user to run
+at 60 FPS with geometry loading correctly on a PSP-3000 with ARK 5. The newer
+collision build still needs a hardware performance check.
 
 ## Build
 
@@ -43,12 +45,21 @@ Circle reverses, Start resets, and Home exits on PSP.
 The installation ZIP includes untextured scenery near the Simpsons house,
 converted from the supplied source checkout. The car is still placeholder geometry.
 The screen shows scene load status and measured FPS. If scenery fails to load,
-it falls back to the original test ground. The car stays on a flat plane and can
-pass through scenery; terrain-following and collision are not implemented.
-There is a boundary at 110 metres along either ground axis, but the scenery sample
-is smaller. Missions, pedestrian gameplay, sound, and original suspension/force
-physics are absent. Graphics and controls still require PPSSPP/hardware validation.
+it falls back to the original test ground. When scenery and the collision grid
+load, the screen shows `Collision ON | terrain following ON`. The car follows
+nearby ground heights and stops on contact with steep scenery surfaces. It also
+stops before leaving the imported ground; the older test-ground boundary remains
+in the fallback mode. Missions, pedestrian gameplay, sound, and original
+suspension/force physics are absent. Collision and its performance still need
+hardware validation.
 See [asset provenance and conversion instructions](assets/README.md).
+
+Collision uses two spheres to approximate the placeholder car and infers ground
+versus obstacles from the rendered triangles. It does not use the original
+game's authored collision volumes. Narrow gaps, shrubs, and decorative geometry
+can therefore behave differently from the original game. The car stays upright:
+there is no suspension, pitch/roll, jumping, sliding response, or damage system.
+The chase camera does not collide with scenery yet.
 
 ## Checks
 
@@ -58,6 +69,8 @@ gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c src/upstre
 python3 -m unittest discover -s tests -p 'test_*.py'
 gcc -std=c99 -Wall -Wextra -Werror tests/mesh_test.c src/mesh.c -lm -o /tmp/shar-mesh-test
 /tmp/shar-mesh-test assets/springfield.shm
+gcc -std=c99 -Wall -Wextra -Werror tests/collision_test.c src/collision.c src/mesh.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-collision-test
+/tmp/shar-collision-test assets/springfield.shm
 python3 tools/audit_source.py /workspace/shar-source
 ```
 
@@ -77,11 +90,11 @@ archive. Its README points to a separate archive for additional build files.
 
 Next milestones:
 
-1. Validate this EBOOT on PPSSPP and PSP, including steering direction and exits.
+1. Check the collision build on PSP, including impacts, reverse escape, terrain height, and FPS.
 2. Download/inventory the supplied additional archive when its storage server is accessible.
 3. Extend the static Pure3D importer with textures and vehicle hierarchy support,
    then replace the placeholder car with one original vehicle.
-4. Add terrain-following and scenery collision, then on-foot movement, streaming,
+4. Refine collision, then add on-foot movement, streaming,
    audio, and mission execution in
    separately testable stages; reuse compatible original logic where practical.
 

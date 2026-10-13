@@ -9,6 +9,7 @@
 #include <string.h>
 #include "driving.h"
 #include "mesh.h"
+#include "collision.h"
 
 PSP_MODULE_INFO("SHAR Driving Prototype", 0, 0, 1);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -18,6 +19,7 @@ static volatile int running = 1;
 static unsigned int __attribute__((aligned(16))) commands[65536];
 static unsigned int draw_offset = 0;
 static StaticMesh world_mesh = {0};
+static CollisionWorld collision_world = {0};
 static unsigned int measured_fps = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
 
@@ -74,9 +76,9 @@ static void render(const Car *car)
     sceGumPerspective(60, 480.0f / 272.0f, 0.5f, 300);
     sceGumMatrixMode(GU_VIEW);
     sceGumLoadIdentity();
-    ScePspFVector3 eye = {car->x - sinf(car->heading) * 9, 5,
+    ScePspFVector3 eye = {car->x - sinf(car->heading) * 9, car->y+5,
                           car->z - cosf(car->heading) * 9};
-    ScePspFVector3 target = {car->x + sinf(car->heading) * 4, 1,
+    ScePspFVector3 target = {car->x + sinf(car->heading) * 4, car->y+1,
                              car->z + cosf(car->heading) * 4};
     ScePspFVector3 up = {0,1,0};
     sceGumLookAt(&eye, &target, &up);
@@ -101,8 +103,8 @@ static void render(const Car *car)
             }
         }
     }
-    box(car->x,0.65f,car->z,1.8f,0.8f,3.6f,car->heading,0xff40c8ff);
-    box(car->x,1.3f,car->z,1.5f,0.65f,1.8f,car->heading,0xff654d32);
+    box(car->x,car->y+0.65f,car->z,1.8f,0.8f,3.6f,car->heading,0xff40c8ff);
+    box(car->x,car->y+1.3f,car->z,1.5f,0.65f,1.8f,car->heading,0xff654d32);
     sceGuFinish();
     sceGuSync(0,0);
     pspDebugScreenSetOffset(draw_offset);
@@ -111,6 +113,7 @@ static void render(const Car *car)
     pspDebugScreenPrintf("X: gas  Square: brake  Circle: reverse      \n");
     pspDebugScreenPrintf("Stick/D-pad: steer  Start: reset  Home: exit \n");
     pspDebugScreenPrintf("%s\n",world_mesh.vertices ? "Springfield geometry sample (no textures)   " : "Scenery missing/invalid: test-ground fallback");
+    pspDebugScreenPrintf("%s\n",collision_world.triangles ? "Collision ON | terrain following ON         " : "Collision OFF | terrain following OFF       ");
     sceDisplayWaitVblankStart();
     draw_offset = (unsigned int)sceGuSwapBuffers();
 }
@@ -133,6 +136,7 @@ int main(int argc, char *argv[])
     }
     if (mesh_load(&world_mesh,"assets/springfield.shm") == 0)
         sceKernelDcacheWritebackRange(world_mesh.vertices,world_mesh.count*sizeof(MeshVertex));
+    if (world_mesh.vertices) collision_build(&collision_world,&world_mesh);
     pspDebugScreenInit();
     sceGuInit();
     sceGuStart(GU_DIRECT,commands);
@@ -155,6 +159,7 @@ int main(int argc, char *argv[])
     Car car;
     car_reset(&car);
     if (world_mesh.vertices) car.heading = 3.14159265f;
+    collision_ground(&collision_world,car.x,car.z,-1,0.5f,&car.y);
     unsigned int previous_buttons = 0;
     unsigned int previous_time = sceKernelGetSystemTimeLow();
     unsigned int fps_start = previous_time;
@@ -166,6 +171,7 @@ int main(int argc, char *argv[])
         if ((pad.Buttons & PSP_CTRL_START) && !(previous_buttons & PSP_CTRL_START)) {
             car_reset(&car);
             if (world_mesh.vertices) car.heading = 3.14159265f;
+            collision_ground(&collision_world,car.x,car.z,-1,0.5f,&car.y);
         }
         previous_buttons = pad.Buttons;
         float steering = (pad.Lx - 128) / 127.0f;
@@ -186,12 +192,15 @@ int main(int argc, char *argv[])
         previous_time = now;
         accumulator += elapsed > 0.1f ? 0.1f : elapsed;
         while (accumulator >= 1.0f / 60.0f) {
+            Car previous=car;
             car_step(&car,controls,1.0f / 60.0f);
+            collision_move(&collision_world,&car,&previous);
             accumulator -= 1.0f / 60.0f;
         }
         render(&car);
     }
     sceGuTerm();
+    collision_free(&collision_world);
     mesh_free(&world_mesh);
     sceKernelExitGame();
     return 0;

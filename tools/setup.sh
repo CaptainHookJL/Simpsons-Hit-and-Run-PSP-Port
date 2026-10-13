@@ -16,3 +16,5 @@ gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c src/upstre
 python3 -m unittest discover -s tests -p 'test_*.py'
 gcc -std=c99 -Wall -Wextra -Werror tests/mesh_test.c src/mesh.c -lm -o /tmp/shar-mesh-test
 /tmp/shar-mesh-test assets/springfield.shm
+gcc -std=c99 -Wall -Wextra -Werror tests/collision_test.c src/collision.c src/mesh.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-collision-test
+/tmp/shar-collision-test assets/springfield.shm

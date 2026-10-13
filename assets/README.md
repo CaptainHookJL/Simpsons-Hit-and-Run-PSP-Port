@@ -11,7 +11,8 @@ commit `0cf35df0a921a803a69d0da4c2aca02aa2543f03`:
 45 metres along X and Z of source position `(225, 3.27, -157)`, near the Simpsons
 house. Selection includes triangles intersecting that square, so triangles can
 extend beyond it. Coordinates are translated to put that position at the origin.
-No textures, skinning, instancing, collision, or animated geometry are converted.
+No textures, skinning, instancing, authored collision volumes, or animated geometry are converted.
+The runtime now builds approximate ground/wall collision from these render triangles.
 Source vertex colours are retained; texture-only surfaces can appear plain.
 Alpha is forced opaque in this initial importer.
 
