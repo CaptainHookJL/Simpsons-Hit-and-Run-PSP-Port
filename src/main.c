@@ -186,6 +186,9 @@ int main(int argc, char *argv[])
     sceGuEnable(GU_SCISSOR_TEST);
     sceGuDepthFunc(GU_GEQUAL);
     sceGuEnable(GU_DEPTH_TEST);
+    /* Let the GE clip triangles crossing the view boundary, as in PSPSDK's
+       GU samples. Leaving this off can make large scenery triangles pop. */
+    sceGuEnable(GU_CLIP_PLANES);
     sceGuDisable(GU_CULL_FACE);
     sceGuFinish();
     sceGuSync(0,0);

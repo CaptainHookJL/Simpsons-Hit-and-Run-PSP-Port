@@ -64,10 +64,11 @@ when the grid loads; the screen shows Collision ON. The car stops at walls and
 the edge of imported ground. Missions, sound, and on-foot gameplay are absent.
 If scenery is missing or invalid, the screen identifies the test-ground fallback.
 
-The previous collision build was reported to run at 60 FPS on PSP-3000 with ARK 5.
-The new textured build passes native tests but still needs hardware validation.
-Check that the HUD says Springfield textures ON, inspect the house/road textures,
-drive toward the house, reverse away from a wall, and watch the FPS counter.
+The previous textured build was reported to run at 60 FPS on PSP-3000 with ARK 5,
+but showed geometry popping while driving. This build enables PSP GE clip planes
+to address triangles crossing the view boundary. The change needs a hardware test:
+watch road/wall edges while driving and turning, and check the FPS counter.
+The sample still has fixed map boundaries; additional map geometry is not included.
 Collision approximates the car with two spheres and uses rendered geometry,
 not original collision volumes. The camera can still clip through scenery.
 If launch fails, record your PSP model, firmware and exact error code.
