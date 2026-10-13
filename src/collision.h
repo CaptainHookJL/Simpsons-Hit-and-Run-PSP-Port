@@ -20,5 +20,9 @@ int collision_ground(const CollisionWorld *world,float x,float z,
 /* Resolve the proposed movement from previous to car, returning 1 when blocked.
    A two-sphere hull approximates the car; no suspension/damage is simulated. */
 int collision_move(CollisionWorld *world,Car *car,const Car *previous);
+/* Check an upright capsule and reachable ground for an on-foot character.
+   Missing world data uses the bounded flat test ground. */
+int collision_actor_fit(CollisionWorld *world,float x,float z,float reference_y,
+                        float radius,float height,float *ground_y);
 
 #endif

@@ -13,6 +13,8 @@
 #include "texture.h"
 #include "clip.h"
 #include "wheels.h"
+#include "player.h"
+#include "vehicle_view.h"
 
 PSP_MODULE_INFO("SHAR Driving Prototype", 0, 0, 1);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -29,6 +31,7 @@ static StaticMesh vehicle_mesh = {0};
 static TexturedScene vehicle_textures = {0};
 static WheelRig wheel_rig = {0};
 static WheelAnimation wheel_animation = {0};
+static VehicleView vehicle_view = {0};
 static int software_clip_active = 0;
 static unsigned int measured_fps = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
@@ -49,8 +52,7 @@ static int callback_thread(SceSize size, void *arg)
     return 0;
 }
 
-static void box(float x, float y, float z, float width, float height,
-                float depth, float heading, unsigned int color)
+static void draw_box(float width,float height,float depth,unsigned int color)
 {
     static const unsigned char indices[36] = {
         0,1,2, 0,2,3, 4,6,5, 4,7,6, 0,4,5, 0,5,1,
@@ -66,13 +68,38 @@ static void box(float x, float y, float z, float width, float height,
         vertices[i] = (Vertex){color, corner[0] * width * 0.5f,
             corner[1] * height * 0.5f, corner[2] * depth * 0.5f};
     }
-    sceGumMatrixMode(GU_MODEL);
-    sceGumLoadIdentity();
-    ScePspFVector3 position = {x,y,z};
-    sceGumTranslate(&position);
-    sceGumRotateY(heading);
     sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
                    36, 0, vertices);
+}
+
+static void box(float x,float y,float z,float width,float height,float depth,float heading,unsigned int color)
+{
+    sceGumMatrixMode(GU_MODEL);
+    sceGumLoadIdentity();
+    ScePspFVector3 position={x,y,z};sceGumTranslate(&position);sceGumRotateY(heading);
+    draw_box(width,height,depth,color);
+}
+
+static void actor_part(const Walker *actor,float x,float y,float offset_y,
+                       float width,float height,float depth,float roll,unsigned int color)
+{
+    sceGumMatrixMode(GU_MODEL);sceGumLoadIdentity();
+    ScePspFVector3 root={actor->x,actor->y,actor->z},pivot={x,y,0},offset={0,offset_y,0};
+    sceGumTranslate(&root);sceGumRotateY(actor->heading);
+    sceGumTranslate(&pivot);sceGumRotateX(roll);sceGumTranslate(&offset);
+    draw_box(width,height,depth,color);
+}
+
+static void draw_actor(const Walker *actor)
+{
+    /* Procedural placeholder; no original Homer mesh/animations are available. */
+    float swing=actor->speed>0.01f?sinf(actor->cycle)*(actor->speed>3?0.55f:0.4f):0;
+    actor_part(actor,0,1.1f,0,0.48f,0.65f,0.36f,0,0xffeeeeee);
+    actor_part(actor,0,1.6f,0,0.36f,0.36f,0.36f,0,0xff40ddff);
+    actor_part(actor,-0.3f,1.35f,-0.26f,0.14f,0.52f,0.16f,-swing,0xff40ddff);
+    actor_part(actor,0.3f,1.35f,-0.26f,0.14f,0.52f,0.16f,swing,0xff40ddff);
+    actor_part(actor,-0.14f,0.8f,-0.38f,0.2f,0.76f,0.23f,swing,0xffc07040);
+    actor_part(actor,0.14f,0.8f,-0.38f,0.2f,0.76f,0.23f,-swing,0xffc07040);
 }
 
 static void draw_textured(const TexturedScene *scene,const ClippedScene *clipped)
@@ -119,8 +146,9 @@ static void flush_textures(const TexturedScene *scene)
     }
 }
 
-static void render(const Car *car)
+static void render(const Player *player,const char *message)
 {
+    const Car *car=&player->car;
     sceGuStart(GU_DIRECT, commands);
     sceGuClearColor(0xffdbb482);
     sceGuClearDepth(0);
@@ -130,16 +158,16 @@ static void render(const Car *car)
     sceGumPerspective(60, 480.0f / 272.0f, 0.5f, 300);
     sceGumMatrixMode(GU_VIEW);
     sceGumLoadIdentity();
-    ScePspFVector3 eye = {car->x - sinf(car->heading) * 9, car->y+5,
-                          car->z - cosf(car->heading) * 9};
-    ScePspFVector3 target = {car->x + sinf(car->heading) * 4, car->y+1,
-                             car->z + cosf(car->heading) * 4};
+    float camera_eye[3],camera_target[3];player_camera(player,camera_eye,camera_target);
+    ScePspFVector3 eye={camera_eye[0],camera_eye[1],camera_eye[2]};
+    ScePspFVector3 target={camera_target[0],camera_target[1],camera_target[2]};
     ScePspFVector3 up = {0,1,0};
     sceGumLookAt(&eye, &target, &up);
     software_clip_active=0;
     ClipCamera camera;
-    if (clipped_scene.vertices && clip_camera(&camera,(ClipVector){eye.x,eye.y,eye.z},
-            (ClipVector){target.x,target.y,target.z},60,480.0f/272.0f,0.5f,300)==0 &&
+    int camera_valid=clip_camera(&camera,(ClipVector){eye.x,eye.y,eye.z},
+            (ClipVector){target.x,target.y,target.z},60,480.0f/272.0f,0.5f,300)==0;
+    if (clipped_scene.vertices && camera_valid &&
             clip_scene(&clipped_scene,&textured_scene,&camera)==0) {
         software_clip_active=1;
         if (clipped_scene.count)
@@ -170,14 +198,23 @@ static void render(const Car *car)
             }
         }
     }
-    if (vehicle_textures.vertices) {
+    int visibility=1;
+    if (!player->driving && camera_valid && vehicle_view.draw.vertices)
+        visibility=vehicle_view_visibility(&vehicle_view,car,&camera);
+    if (vehicle_textures.vertices && visibility==0) {
+        if (vehicle_view_clip(&vehicle_view,&vehicle_textures,&wheel_rig,&wheel_animation,car,&camera)==0) {
+            sceGumMatrixMode(GU_MODEL);sceGumLoadIdentity();
+            if (vehicle_view.draw.count) sceKernelDcacheWritebackRange(vehicle_view.draw.vertices,vehicle_view.draw.count*sizeof(TexturedVertex));
+            draw_textured(&vehicle_view.draw,NULL);
+        }
+    } else if (vehicle_textures.vertices && visibility==1) {
         sceGumMatrixMode(GU_MODEL);
         sceGumLoadIdentity();
         ScePspFVector3 position={car->x,car->y,car->z};
         sceGumTranslate(&position);
         sceGumRotateY(car->heading);
-        /* A rigid local mesh stays in front of the chase camera. It does not
-           enter the cached static-world clipping or collision data. */
+        /* Direct draw while wholly visible. Intersecting on-foot views use
+           the separate dynamic scratch above; static-world bounds stay fixed. */
         if (wheel_rig.parts[0].draw.vertices) {
             draw_textured(&wheel_rig.parts[0].draw,NULL);
             for (int i=0;i<4;++i) {
@@ -193,23 +230,28 @@ static void render(const Car *car)
         } else {
             draw_textured(&vehicle_textures,NULL);
         }
-    } else {
+    } else if (!vehicle_textures.vertices) {
         box(car->x,car->y+0.65f,car->z,1.8f,0.8f,3.6f,car->heading,0xff40c8ff);
         box(car->x,car->y+1.3f,car->z,1.5f,0.65f,1.8f,car->heading,0xff654d32);
     }
+    if (!player->driving) draw_actor(&player->walker);
     sceGuFinish();
     sceGuSync(0,0);
     pspDebugScreenSetOffset(draw_offset);
     pspDebugScreenSetXY(0,0);
-    pspDebugScreenPrintf("SHAR PSP | %3d km/h | %2u FPS              \n", (int)(fabsf(car->speed) * 3.6f),measured_fps);
-    pspDebugScreenPrintf("X: gas  Square: brake  Circle: reverse      \n");
-    pspDebugScreenPrintf("Stick/D-pad: steer  Start: reset  Home: exit \n");
+    float speed=player->driving?fabsf(car->speed):player->walker.speed;
+    pspDebugScreenPrintf("SHAR PSP | %3d km/h | %2u FPS              \n", (int)(speed * 3.6f),measured_fps);
+    pspDebugScreenPrintf("%s\n",player->driving?"DRIVING | X: gas  Square: brake  O: reverse  ":"ON FOOT | Stick/D-pad: move  Hold X: run     ");
+    pspDebugScreenPrintf("%s\n",player->driving?"Triangle: exit car  Start: reset  Home: quit ":"Triangle: enter car  L/R: camera  Start: reset");
     pspDebugScreenPrintf("%s\n",textured_scene.vertices ? "Springfield textures ON                     " :
                         (world_mesh.vertices ? "Textures OFF | Springfield geometry only    " : "Scenery missing/invalid: test-ground fallback"));
     pspDebugScreenPrintf("%s\n",collision_world.triangles ? "Collision ON | terrain following ON         " : "Collision OFF | terrain following OFF       ");
     pspDebugScreenPrintf("%s\n",software_clip_active ? "Software clipping ON                        " : "Software clipping OFF                       ");
     pspDebugScreenPrintf("%s\n",vehicle_textures.vertices ? "Vehicle: CompactA                           " : "Vehicle: placeholder (asset load failed)     ");
     pspDebugScreenPrintf("%s\n",wheel_rig.parts[0].draw.vertices ? "Wheel animation ON                          " : "Wheel animation OFF                         ");
+    pspDebugScreenPrintf("%-48s\n",player->driving?"": "Character: animated placeholder");
+    pspDebugScreenPrintf("%-48s\n",message?message:(player->driving?"Stop, then press Triangle to get out":
+        (player_near_car(player)?"Triangle: enter CompactA":"Walk back to CompactA to enter")));
     sceDisplayWaitVblankStart();
     draw_offset = (unsigned int)sceGuSwapBuffers();
 }
@@ -246,6 +288,7 @@ int main(int argc, char *argv[])
                 sceKernelDcacheWritebackRange(part->vertices,part->count*sizeof(TexturedVertex));
             }
         }
+        vehicle_view_create(&vehicle_view,&vehicle_textures,&wheel_rig);
     } else {
         texture_free(&vehicle_textures);
         mesh_free(&vehicle_mesh);
@@ -272,10 +315,8 @@ int main(int argc, char *argv[])
     sceDisplayWaitVblankStart();
     sceGuDisplay(GU_TRUE);
 
-    Car car;
-    car_reset(&car);
-    if (world_mesh.vertices) car.heading = 3.14159265f;
-    collision_ground(&collision_world,car.x,car.z,-1,0.5f,&car.y);
+    Player player;player_reset(&player,&collision_world,world_mesh.vertices!=NULL);
+    const char *message=NULL;float message_time=0;
     unsigned int previous_buttons = 0;
     unsigned int previous_time = sceKernelGetSystemTimeLow();
     unsigned int fps_start = previous_time;
@@ -285,18 +326,28 @@ int main(int argc, char *argv[])
         SceCtrlData pad;
         sceCtrlReadBufferPositive(&pad,1);
         if ((pad.Buttons & PSP_CTRL_START) && !(previous_buttons & PSP_CTRL_START)) {
-            car_reset(&car);
+            player_reset(&player,&collision_world,world_mesh.vertices!=NULL);
             wheels_reset(&wheel_animation);
-            if (world_mesh.vertices) car.heading = 3.14159265f;
-            collision_ground(&collision_world,car.x,car.z,-1,0.5f,&car.y);
+            message=NULL;message_time=0;
+        } else if ((pad.Buttons & PSP_CTRL_TRIANGLE) && !(previous_buttons & PSP_CTRL_TRIANGLE)) {
+            PlayerInteraction result=player_interact(&player,&collision_world);
+            const char *messages[]={"Entered CompactA","Exited CompactA","Stop the car before getting out",
+                "No clear exit: move to an open space","Move closer to CompactA","Entry blocked: go around the obstacle"};
+            message=messages[result];message_time=2;
         }
         previous_buttons = pad.Buttons;
         float steering = (pad.Lx - 128) / 127.0f;
         if (fabsf(steering) < 0.15f) steering = 0;
         if (pad.Buttons & PSP_CTRL_LEFT) steering = -1;
         if (pad.Buttons & PSP_CTRL_RIGHT) steering = 1;
-        Controls controls = {steering, !!(pad.Buttons & PSP_CTRL_CROSS),
-            !!(pad.Buttons & PSP_CTRL_SQUARE), !!(pad.Buttons & PSP_CTRL_CIRCLE)};
+        float forward=(128-pad.Ly)/127.0f;
+        if (fabsf(forward)<0.15f) forward=0;
+        if (pad.Buttons & PSP_CTRL_UP) forward=1;
+        if (pad.Buttons & PSP_CTRL_DOWN) forward=-1;
+        PlayerControls controls={.car={steering,!!(pad.Buttons & PSP_CTRL_CROSS),
+            !!(pad.Buttons & PSP_CTRL_SQUARE),!!(pad.Buttons & PSP_CTRL_CIRCLE)},
+            .horizontal=steering,.vertical=forward,.run=!!(pad.Buttons & PSP_CTRL_CROSS),
+            .camera_turn=!!(pad.Buttons & PSP_CTRL_LTRIGGER)-!!(pad.Buttons & PSP_CTRL_RTRIGGER)};
         unsigned int now = sceKernelGetSystemTimeLow();
         ++fps_frames;
         unsigned int fps_elapsed = now - fps_start;
@@ -307,17 +358,18 @@ int main(int argc, char *argv[])
         }
         float elapsed = (now - previous_time) / 1000000.0f;
         previous_time = now;
+        if (message_time>0) {message_time-=elapsed;if (message_time<=0) message=NULL;}
         accumulator += elapsed > 0.1f ? 0.1f : elapsed;
         while (accumulator >= 1.0f / 60.0f) {
-            Car previous=car;
-            car_step(&car,controls,1.0f / 60.0f);
-            collision_move(&collision_world,&car,&previous);
-            if (wheel_rig.parts[0].draw.vertices) wheels_step(&wheel_animation,&wheel_rig,&previous,&car);
+            Car previous=player.car;
+            player_step(&player,&collision_world,controls,1.0f / 60.0f);
+            if (player.driving && wheel_rig.parts[0].draw.vertices) wheels_step(&wheel_animation,&wheel_rig,&previous,&player.car);
             accumulator -= 1.0f / 60.0f;
         }
-        render(&car);
+        render(&player,message);
     }
     sceGuTerm();
+    vehicle_view_free(&vehicle_view);
     wheels_free(&wheel_rig);
     texture_free(&vehicle_textures);
     mesh_free(&vehicle_mesh);

@@ -47,6 +47,17 @@ The original steering controller and wheel-rolling relation run within the
 replacement engine. The original vehicle physics and complete gameplay are
 still absent.
 
+`src/player.c` adapts the human-player input response from
+[`Character::UpdateDesiredDirAndSpeed`](https://github.com/Svxy/The-Simpsons-Hit-and-Run/blob/0cf35df0a921a803a69d0da4c2aca02aa2543f03/game/code/worldsim/character/character.cpp#L1693)
+and `Character::GetInputScale` in `character.h`: square the direction magnitude,
+divide by 0.69, cap at one, then multiply by maximum speed. Camera-relative
+direction and diagonal normalization feed this response. The 2.5/5.0 m/s walk/run
+limits are prototype tuning, rather than original character tuning scripts.
+The standalone movement, capsule collision, car entry/exit and camera code are
+new implementations. They do not use the original action sequencer, puppet,
+choreo animation library or character collision solver. The rendered character
+is an animated procedural placeholder; original Homer assets are missing.
+
 Native tests cover the original rate limit, angle change at 50 km/h, half-top-speed
 attenuation, target settling, prevention of negative sensitivity, and direction
 reversal. The controller is also compiled and linked into the PSP PRX.

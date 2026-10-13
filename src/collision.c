@@ -150,6 +150,79 @@ static Vec3 closest_point(const CollisionTriangle *t,Vec3 p)
     return add(t->a,add(mul(t->ab,vb*inverse),mul(t->ac,vc*inverse)));
 }
 
+static float clamp_unit(float x) {return x<0?0:(x>1?1:x);}
+
+/* Squared distance between the capsule axis and a triangle edge. */
+static float segment_distance(Vec3 a,Vec3 b,Vec3 c,Vec3 d)
+{
+    Vec3 u=sub(b,a),v=sub(d,c),w=sub(a,c);
+    float aa=dot(u,u),bb=dot(u,v),cc=dot(v,v),dd=dot(u,w),ee=dot(v,w);
+    float denominator=aa*cc-bb*bb;
+    float s=denominator>1e-10f?clamp_unit((bb*ee-cc*dd)/denominator):0;
+    float t=cc>1e-10f?(bb*s+ee)/cc:0;
+    if (t<0) {t=0;s=aa>1e-10f?clamp_unit(-dd/aa):0;}
+    else if (t>1) {t=1;s=aa>1e-10f?clamp_unit((bb-dd)/aa):0;}
+    Vec3 delta=sub(add(a,mul(u,s)),add(c,mul(v,t)));
+    return dot(delta,delta);
+}
+
+static float capsule_triangle(const CollisionTriangle *t,Vec3 a,Vec3 b)
+{
+    Vec3 delta=sub(a,closest_point(t,a));float best=dot(delta,delta);
+    delta=sub(b,closest_point(t,b));best=fminf(best,dot(delta,delta));
+    Vec3 tb=add(t->a,t->ab),tc=add(t->a,t->ac);
+    best=fminf(best,segment_distance(a,b,t->a,tb));
+    best=fminf(best,segment_distance(a,b,tb,tc));
+    best=fminf(best,segment_distance(a,b,tc,t->a));
+    Vec3 n={t->ab.y*t->ac.z-t->ab.z*t->ac.y,
+            t->ab.z*t->ac.x-t->ab.x*t->ac.z,
+            t->ab.x*t->ac.y-t->ab.y*t->ac.x};
+    float da=dot(sub(a,t->a),n),db=dot(sub(b,t->a),n);
+    if (da*db<=0 && fabsf(da-db)>1e-10f) {
+        Vec3 hit=add(a,mul(sub(b,a),da/(da-db)));
+        delta=sub(hit,closest_point(t,hit));best=fminf(best,dot(delta,delta));
+    }
+    return best;
+}
+
+int collision_actor_fit(CollisionWorld *world,float x,float z,float reference_y,
+                        float radius,float height,float *ground_y)
+{
+    if (!isfinite(x)||!isfinite(z)||!isfinite(reference_y)||!isfinite(radius)||
+        !isfinite(height)||radius<0.1f||radius>1||height<radius*2||height>3) return 0;
+    if (!world->triangles) {
+        if (fabsf(x)>110-radius||fabsf(z)>110-radius) return 0;
+        *ground_y=0;return 1;
+    }
+    float ground;
+    if (!collision_ground(world,x,z,reference_y-0.6f,reference_y+0.3f,&ground)) return 0;
+    /* Support the entire footprint at map edges, not just the capsule centre. */
+    const float probes[4][2]={{radius,0},{-radius,0},{0,radius},{0,-radius}};
+    for (int i=0;i<4;++i) {
+        float edge;
+        if (!collision_ground(world,x+probes[i][0],z+probes[i][1],ground-0.35f,ground+0.3f,&edge)) return 0;
+    }
+    Vec3 a={x,ground+radius,z},b={x,ground+height-radius,z};
+    int x0=cell(x-radius,world->min_x,world->cell_size),x1=cell(x+radius,world->min_x,world->cell_size);
+    int z0=cell(z-radius,world->min_z,world->cell_size),z1=cell(z+radius,world->min_z,world->cell_size);
+    if (++world->stamp==0) {
+        for (uint32_t i=0;i<world->triangle_count;++i) world->triangles[i].stamp=0;
+        world->stamp=1;
+    }
+    for (int iz=z0;iz<=z1;++iz) for (int ix=x0;ix<=x1;++ix) {
+        int index=iz*GRID_SIZE+ix;
+        for (uint32_t j=world->offsets[index];j<world->offsets[index+1];++j) {
+            CollisionTriangle *t=&world->triangles[world->references[j]];
+            if (!t->kind||t->stamp==world->stamp) continue;
+            if (t->kind==1 && t->min_y<=ground+0.3f) continue; /* walkable ground, not an overhead surface */
+            t->stamp=world->stamp;
+            if (t->min_y>ground+height || t->max_y<ground) continue;
+            if (capsule_triangle(t,a,b)<radius*radius-0.00001f) return 0;
+        }
+    }
+    *ground_y=ground;return 1;
+}
+
 static int overlaps(CollisionWorld *world,const Car *car)
 {
     const float extent=CAR_RADIUS+HULL_OFFSET;

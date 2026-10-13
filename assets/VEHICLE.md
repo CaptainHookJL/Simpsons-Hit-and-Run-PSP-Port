@@ -20,8 +20,13 @@ the user subsequently reported vehicle build `e45c6e0` "works perfectly" on the
 PSP-3000 with ARK 5.
 
 The player model renders with the car position and yaw through the same texture
-draw path as scenery. It stays within the chase camera's view, so it does not
-change cached static-world bounds. Native checks cover 24 camera/yaw orientations
+draw path as scenery. While driving, it stays within the chase camera's view.
+While on foot, the parked car uses conservative visibility bounds and separate
+software-clipping scratch when it crosses camera planes. The animated part
+transforms are applied before clipping; UVs and materials are retained. Fully
+visible views keep direct drawing, and completely hidden views draw nothing.
+This does not change cached static-world bounds. Native checks cover 144 on-foot
+views, plus 24 driving camera/yaw orientations
 and 864 combinations with steering and tyre rotation. Steering,
 collision, and terrain-following use the existing prototype controller. Original
 authored vehicle collision, suspension, occupants, and damage are not imported.

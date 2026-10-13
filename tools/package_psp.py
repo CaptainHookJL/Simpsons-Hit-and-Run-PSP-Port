@@ -34,9 +34,9 @@ for i in range(entry_count):
 if memsize != 0:
     parser.error("Expected standard PSP memory mode (MEMSIZE=0)")
 
-instructions = """SHAR PSP - Driving Prototype
+instructions = """SHAR PSP - Driving and On-Foot Prototype
 
-This is a replacement-engine driving test, not the full Simpsons game.
+This is a replacement-engine prototype, not the full Simpsons game.
 It includes an adapted original Hit & Run steering controller. See SOURCE_REUSE.md.
 
 Requires a PSP configured to run unsigned homebrew (custom firmware).
@@ -50,11 +50,10 @@ INSTALL
    On PSP Go, use the corresponding Game storage location.
 
 CONTROLS
-Analog stick or D-pad: steer
-Cross: accelerate
-Square: brake
-Circle: reverse
-Start: reset vehicle
+Driving: stick/D-pad steers, Cross accelerates, Square brakes, Circle reverses
+On foot: stick/D-pad moves, hold Cross to run, L/R turns the camera
+Triangle: enter/exit CompactA (stop before exiting; approach the car to enter)
+Start: reset to driving at spawn
 Home/PS: quit
 
 The screen shows speed, controls, and scenery load status. This package includes
@@ -62,17 +61,25 @@ textured original Springfield geometry near the Simpsons house and the original
 CompactA car mesh/textures, reused from a parked-car asset. Ground following and
 approximate scenery collision are enabled
 when the grid loads; the screen shows Collision ON. The car stops at walls and
-the edge of imported ground. Missions, sound, and on-foot gameplay are absent.
+the edge of imported ground. Walking/running, wall sliding and clear-path car
+entry/exit are included. The car stays parked and solid while on foot.
+The character is an animated procedural placeholder; original Homer assets
+are missing from the GitHub checkout. See CHARACTER.md for details.
+Missions, NPCs and sound are absent.
 If scenery is missing or invalid, the screen identifies the test-ground fallback.
 
 Optimized clipping build 716b316 was reported at locked 60 FPS on PSP-3000 with
 ARK 5. The user confirmed the later CompactA vehicle build e45c6e0 works perfectly.
-This build animates all four original tyres and steers the front pair. Rotation
+This build includes on-foot exploration and animates all four original tyres.
+The front pair steers. Rotation
 follows actual movement after collision, including reverse. The existing steering
 and collision footprint stay in use. Original suspension/damage are absent.
-Check Vehicle: CompactA and Wheel animation ON in the HUD. Check forward/reverse
-rolling, front steering, stopping at walls, reset, road continuity and FPS.
-This wheel-animation build has not yet been tested on a physical PSP.
+Check Vehicle: CompactA and Wheel animation ON in the HUD. Stop and press Triangle
+to exit, check ON FOOT, walk/run, rotate the camera, test walls/the parked car,
+then return and press Triangle to enter. Check Start reset, driving/wheel behavior,
+road continuity and FPS in both modes. Parked-car camera-plane crossings use
+software clipping; fully visible views retain direct drawing.
+This on-foot build has not yet been tested on a physical PSP.
 The sample still has fixed map boundaries; additional map geometry is not included.
 Collision approximates the car with two spheres and uses rendered geometry,
 not original collision volumes. The camera can still clip through scenery.
@@ -92,6 +99,7 @@ with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED) as arch
     archive.writestr("PSP/GAME/SHARPSP/assets/compact.swh", (ROOT / "assets/compact.swh").read_bytes())
     archive.writestr("PSP/GAME/SHARPSP/assets/compact.json", (ROOT / "assets/compact.json").read_bytes())
     archive.writestr("VEHICLE.md", (ROOT / "assets/VEHICLE.md").read_bytes())
+    archive.writestr("CHARACTER.md", (ROOT / "assets/CHARACTER.md").read_bytes())
 with zipfile.ZipFile(args.output) as archive:
     if (archive.testzip() is not None or archive.read("PSP/GAME/SHARPSP/EBOOT.PBP") != binary
         or archive.read("PSP/GAME/SHARPSP/assets/springfield.shm") != (ROOT / "assets/springfield.shm").read_bytes()

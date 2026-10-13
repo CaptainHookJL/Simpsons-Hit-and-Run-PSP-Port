@@ -25,10 +25,24 @@ asset changes should be checked on the same device and driving route for road
 continuity, collision, and FPS. Other PSP models, firmware configurations, larger
 maps, and other original vehicle assets have not been validated by these reports.
 
-The current wheel-animation build is awaiting hardware testing. Cloud checks
+Wheel-animation build `2d1651d` is awaiting hardware testing. Cloud checks
 pass for unchanged geometry/UVs, forward/reverse rotation, front steering inputs,
 turning arcs, collision stopping, reset, damaged metadata and 864 chase-camera
 orientations/steering/roll combinations. The PSP executable builds successfully.
 On the PSP, confirm `Wheel animation ON`, front-tyre direction, rolling direction,
 stopping at walls, Start reset, road continuity and FPS on the established route.
 The prior locked-60-FPS report does not establish performance for this change.
+
+The current on-foot/entry-exit build is also awaiting hardware testing. Cloud
+checks pass for walking/running, camera-relative input, wall sliding, capsule
+contacts, slopes/edges, parked-car collision, clear-path transitions and real
+Springfield exploration. Parked-car clipping passes 144 camera views (32 partial,
+48 outside, 64 fully visible; 969 peak submitted vertices). These new native
+checks pass with AddressSanitizer and UndefinedBehaviorSanitizer. The PSP PRX
+build succeeds; these results do not measure FPS on a PSP.
+
+Test on PSP-3000/ARK 5: stop and press Triangle to exit; walk/run with the stick
+or D-pad and Cross; turn the camera with L/R; approach walls and the parked car;
+return and press Triangle to enter; check Start reset, wheel animation, roads
+and FPS in both modes. The character is an animated placeholder, not the original
+Homer model or original animations. Camera/scenery collision remains absent.
