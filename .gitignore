@@ -3,5 +3,6 @@
 *.prx
 *.PBP
 *.zip
+!downloads/*.zip
 PARAM.SFO
 build/

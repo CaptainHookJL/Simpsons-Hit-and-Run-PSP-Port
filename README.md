@@ -5,6 +5,13 @@ port of the original game. It contains no original game assets or middleware.
 The original source was inspected to identify platform and middleware boundaries;
 its gameplay code has not yet been integrated.
 
+## Download for PSP
+
+[Download the installation ZIP](https://github.com/CaptainHookJL/Simpsons-Hit-and-Run-PSP-Port/raw/refs/heads/main/downloads/SHAR-PSP-Prototype.zip).
+Extract it and copy the `PSP` folder to your Memory Stick's root, then launch
+SHAR PSP from Game > Memory Stick. Requires custom firmware supporting unsigned
+homebrew. This is a driving prototype; physical PSP execution is not yet verified.
+
 ## Build
 
 Install [PSPDEV](https://github.com/pspdev/pspdev), then:
