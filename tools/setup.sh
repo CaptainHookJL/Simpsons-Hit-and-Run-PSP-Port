@@ -30,3 +30,5 @@ gcc -std=c99 -Wall -Wextra -Werror tests/clip_test.c src/clip.c src/texture.c sr
 /tmp/shar-clip-test assets/springfield.shm assets/springfield.stx
 gcc -std=c99 -Wall -Wextra -Werror tests/vehicle_test.c src/clip.c src/texture.c src/mesh.c -lm -o /tmp/shar-vehicle-test
 /tmp/shar-vehicle-test assets/compact.shm assets/compact.stx
+gcc -std=c99 -Wall -Wextra -Werror tests/wheels_test.c src/wheels.c src/clip.c src/texture.c src/mesh.c src/collision.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-wheels-test
+/tmp/shar-wheels-test assets/compact.shm assets/compact.stx assets/compact.swh

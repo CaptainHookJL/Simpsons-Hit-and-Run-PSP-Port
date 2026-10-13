@@ -21,19 +21,41 @@ PSP-3000 with ARK 5.
 
 The player model renders with the car position and yaw through the same texture
 draw path as scenery. It stays within the chase camera's view, so it does not
-change cached static-world bounds. Native checks cover 24 camera/yaw orientations.
-No per-frame model allocations or wheel/skeleton animation are added. Steering,
+change cached static-world bounds. Native checks cover 24 camera/yaw orientations
+and 864 combinations with steering and tyre rotation. Steering,
 collision, and terrain-following use the existing prototype controller. Original
 authored vehicle collision, suspension, occupants, and damage are not imported.
+
+`compact.swh` identifies the four disconnected tyre components after welding
+positions, leaving 166 body triangles and 36 triangles per tyre (310 total).
+It stores triangle membership, geometry-derived axle pivots and approximately
+0.3344-metre radii. Its CRC binds to `compact.shm`; source geometry, colours,
+UVs and texture assignments are retained. These pivots are inferred from the
+parked mesh, not read from an original drivable-car skeleton.
+
+The front tyres turn with the original smoothed steering controller. Each tyre
+rolls according to its actual pivot displacement after collision projected onto
+its facing, divided by radius. Reverse rolls backwards, turning arcs differ
+between inner/outer wheels, and a blocked car stops rolling. Start resets rotation.
+The rendering order is body yaw, local pivot, front steering, then axle rotation.
+Angles stay bounded and part buffers allocate only at startup (about 22 KiB),
+sharing the original textures. The car uses six draw batches instead of two.
+Missing/invalid wheel metadata retains the rigid-car fallback. The HUD shows
+`Wheel animation ON` on success. This is visual animation without suspension,
+burnout/tyre-slip simulation, damage or a full vehicle hierarchy. PSP performance
+for this change has not yet been measured.
 
 Regenerate from the source checkout with:
 
 ```sh
 python3 tools/import_vehicle.py \
   /workspace/shar-source/game/build/art/WORK/EL/PC/l01/l1_parkedA_Shape.p3d \
-  --output-dir assets --prefix compact
+  --output-dir assets --prefix compact --split-wheels
 ```
 
+The mesh/texture files retain the hashes from the successful rigid-car build.
+`tools/split_wheels.py` can also generate the wheel sidecar from `compact.shm`.
+The CompactA-specific splitter requires one separate tyre at each wheel position.
 Only rigid root/static meshes and embedded PNG textures are supported. Skinning
 and vehicle-part hierarchies require further importer work. The separately
 linked MEGA archive is not needed for this asset; a fresh archive download URL

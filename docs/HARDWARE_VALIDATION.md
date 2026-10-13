@@ -24,3 +24,11 @@ camera views, with matching submitted geometry and UVs. Subsequent rendering or
 asset changes should be checked on the same device and driving route for road
 continuity, collision, and FPS. Other PSP models, firmware configurations, larger
 maps, and other original vehicle assets have not been validated by these reports.
+
+The current wheel-animation build is awaiting hardware testing. Cloud checks
+pass for unchanged geometry/UVs, forward/reverse rotation, front steering inputs,
+turning arcs, collision stopping, reset, damaged metadata and 864 chase-camera
+orientations/steering/roll combinations. The PSP executable builds successfully.
+On the PSP, confirm `Wheel animation ON`, front-tyre direction, rolling direction,
+stopping at walls, Start reset, road continuity and FPS on the established route.
+The prior locked-60-FPS report does not establish performance for this change.

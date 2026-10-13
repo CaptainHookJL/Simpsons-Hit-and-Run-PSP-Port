@@ -12,6 +12,7 @@
 #include "collision.h"
 #include "texture.h"
 #include "clip.h"
+#include "wheels.h"
 
 PSP_MODULE_INFO("SHAR Driving Prototype", 0, 0, 1);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -26,6 +27,8 @@ static TexturedScene textured_scene = {0};
 static ClippedScene clipped_scene = {0};
 static StaticMesh vehicle_mesh = {0};
 static TexturedScene vehicle_textures = {0};
+static WheelRig wheel_rig = {0};
+static WheelAnimation wheel_animation = {0};
 static int software_clip_active = 0;
 static unsigned int measured_fps = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
@@ -175,7 +178,21 @@ static void render(const Car *car)
         sceGumRotateY(car->heading);
         /* A rigid local mesh stays in front of the chase camera. It does not
            enter the cached static-world clipping or collision data. */
-        draw_textured(&vehicle_textures,NULL);
+        if (wheel_rig.parts[0].draw.vertices) {
+            draw_textured(&wheel_rig.parts[0].draw,NULL);
+            for (int i=0;i<4;++i) {
+                const WheelPart *part=&wheel_rig.parts[i+1];
+                sceGumPushMatrix();
+                ScePspFVector3 pivot={part->x,part->y,part->z};
+                sceGumTranslate(&pivot);
+                if (part->steering) sceGumRotateY(-car->wheel_angle);
+                sceGumRotateX(wheel_animation.roll[i]);
+                draw_textured(&part->draw,NULL);
+                sceGumPopMatrix();
+            }
+        } else {
+            draw_textured(&vehicle_textures,NULL);
+        }
     } else {
         box(car->x,car->y+0.65f,car->z,1.8f,0.8f,3.6f,car->heading,0xff40c8ff);
         box(car->x,car->y+1.3f,car->z,1.5f,0.65f,1.8f,car->heading,0xff654d32);
@@ -192,6 +209,7 @@ static void render(const Car *car)
     pspDebugScreenPrintf("%s\n",collision_world.triangles ? "Collision ON | terrain following ON         " : "Collision OFF | terrain following OFF       ");
     pspDebugScreenPrintf("%s\n",software_clip_active ? "Software clipping ON                        " : "Software clipping OFF                       ");
     pspDebugScreenPrintf("%s\n",vehicle_textures.vertices ? "Vehicle: CompactA                           " : "Vehicle: placeholder (asset load failed)     ");
+    pspDebugScreenPrintf("%s\n",wheel_rig.parts[0].draw.vertices ? "Wheel animation ON                          " : "Wheel animation OFF                         ");
     sceDisplayWaitVblankStart();
     draw_offset = (unsigned int)sceGuSwapBuffers();
 }
@@ -222,6 +240,12 @@ int main(int argc, char *argv[])
     if (mesh_load(&vehicle_mesh,"assets/compact.shm")==0 &&
             texture_load(&vehicle_textures,&vehicle_mesh,"assets/compact.stx")==0) {
         flush_textures(&vehicle_textures);
+        if (wheels_load(&wheel_rig,&vehicle_mesh,&vehicle_textures,"assets/compact.swh")==0) {
+            for (int i=0;i<5;++i) {
+                const TexturedScene *part=&wheel_rig.parts[i].draw;
+                sceKernelDcacheWritebackRange(part->vertices,part->count*sizeof(TexturedVertex));
+            }
+        }
     } else {
         texture_free(&vehicle_textures);
         mesh_free(&vehicle_mesh);
@@ -262,6 +286,7 @@ int main(int argc, char *argv[])
         sceCtrlReadBufferPositive(&pad,1);
         if ((pad.Buttons & PSP_CTRL_START) && !(previous_buttons & PSP_CTRL_START)) {
             car_reset(&car);
+            wheels_reset(&wheel_animation);
             if (world_mesh.vertices) car.heading = 3.14159265f;
             collision_ground(&collision_world,car.x,car.z,-1,0.5f,&car.y);
         }
@@ -287,11 +312,13 @@ int main(int argc, char *argv[])
             Car previous=car;
             car_step(&car,controls,1.0f / 60.0f);
             collision_move(&collision_world,&car,&previous);
+            if (wheel_rig.parts[0].draw.vertices) wheels_step(&wheel_animation,&wheel_rig,&previous,&car);
             accumulator -= 1.0f / 60.0f;
         }
         render(&car);
     }
     sceGuTerm();
+    wheels_free(&wheel_rig);
     texture_free(&vehicle_textures);
     mesh_free(&vehicle_mesh);
     clip_free(&clipped_scene);

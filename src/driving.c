@@ -30,6 +30,7 @@ void car_step(Car *car, Controls controls, float dt)
         speedKmh / SHAR_DEFAULT_TOP_SPEED_KMH,
         SHAR_DEFAULT_HIGH_SPEED_STEERING_DROP, SHAR_DEFAULT_MAX_WHEEL_ANGLE_DEG,
         dt, &car->steering_input);
+    car->wheel_angle=wheelAngle;
     /* The original steering controller drives a simplified bicycle model.
        Wheelbase is prototype tuning, not a value from an original asset. */
     float turn = car->speed * tanf(wheelAngle) / 2.6f;

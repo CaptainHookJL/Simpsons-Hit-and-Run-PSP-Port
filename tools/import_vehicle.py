@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Convert an original rigid PC P3D vehicle mesh into the prototype's formats.
 
-This imports the visual model only. Skeletons, animated wheels, original tuning,
-and damage are not implemented. Dimensions fit the existing collision footprint.
+This imports the visual model only. --split-wheels identifies CompactA's four
+disconnected tyres for runtime animation. Skeletons, original tuning and damage
+are not imported. Dimensions fit the existing collision footprint.
 """
 import argparse
 import hashlib
@@ -56,6 +57,7 @@ def main():
     parser.add_argument("input",type=Path)
     parser.add_argument("--output-dir",type=Path,required=True)
     parser.add_argument("--prefix",default="compact")
+    parser.add_argument("--split-wheels",action="store_true",help="Create CompactA tyre pivots and triangle membership")
     args=parser.parse_args()
     if not re.fullmatch(r"[A-Za-z0-9_-]+",args.prefix):
         parser.error("--prefix must be a plain file name")
@@ -66,9 +68,17 @@ def main():
         mesh,texture,report=convert(p.read_chunks(data))
         report["source_file"]=args.input.name
         report["source_sha256"]=hashlib.sha256(data).hexdigest()
+        wheel_data=None
+        if args.split_wheels:
+            from split_wheels import split
+            wheel_data,wheel_report=split(mesh)
+            report["animated_wheels"]=True
+            report["wheel_rig"]=wheel_report
         args.output_dir.mkdir(parents=True,exist_ok=True)
         (args.output_dir/(args.prefix+".shm")).write_bytes(mesh)
         (args.output_dir/(args.prefix+".stx")).write_bytes(texture)
+        if wheel_data is not None:
+            (args.output_dir/(args.prefix+".swh")).write_bytes(wheel_data)
         (args.output_dir/(args.prefix+".json")).write_text(json.dumps(report,indent=2)+"\n")
         print(json.dumps(report,indent=2))
     except (OSError,p.FormatError,struct.error) as error:

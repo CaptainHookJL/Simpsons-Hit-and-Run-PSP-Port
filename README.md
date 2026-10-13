@@ -19,6 +19,8 @@ meshes. See [hardware validation](docs/HARDWARE_VALIDATION.md) for the tested
 build and the limits of that evidence. The imported area remains a bounded sample.
 The user also confirmed CompactA vehicle build `e45c6e0` "works perfectly" on
 the same PSP; the locked-60-FPS measurement above refers to the earlier baseline.
+The current build adds tyre rotation and front-wheel steering; its PSP FPS still
+needs hardware measurement.
 
 ## Build
 
@@ -48,9 +50,12 @@ Circle reverses, Start resets, and Home exits on PSP.
 
 The installation ZIP includes textured scenery near the Simpsons house,
 converted from the supplied source checkout, plus the original CompactA parked-car
-mesh and two textures. Its rigid wheels are not animated yet. See
+mesh and two textures. All four original tyres rotate with actual movement, and
+the front pair turns with the smoothed steering angle. See
 [vehicle provenance and conversion](assets/VEHICLE.md). The HUD shows `Vehicle: CompactA`
 when it loads successfully; missing/invalid vehicle assets fall back to boxes.
+`Wheel animation ON` confirms the wheel metadata loaded. Missing/invalid metadata
+keeps the original rigid car visible. Start resets both the car and wheel rotation.
 The screen shows texture/collision state and measured FPS. If scenery fails to load,
 it falls back to the original test ground. When scenery and the collision grid
 load, the screen shows `Collision ON | terrain following ON`. The car follows
@@ -94,12 +99,18 @@ gcc -std=c99 -Wall -Wextra -Werror tests/clip_test.c src/clip.c src/texture.c sr
 /tmp/shar-clip-test assets/springfield.shm assets/springfield.stx
 gcc -std=c99 -Wall -Wextra -Werror tests/vehicle_test.c src/clip.c src/texture.c src/mesh.c -lm -o /tmp/shar-vehicle-test
 /tmp/shar-vehicle-test assets/compact.shm assets/compact.stx
+gcc -std=c99 -Wall -Wextra -Werror tests/wheels_test.c src/wheels.c src/clip.c src/texture.c src/mesh.c src/collision.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-wheels-test
+/tmp/shar-wheels-test assets/compact.shm assets/compact.stx assets/compact.swh
 python3 tools/audit_source.py /workspace/shar-source
 ```
 
 The driving test covers acceleration, braking without unintended reverse,
 forward and reverse steering, boundary stopping, and zero elapsed time. The original-source
 audit deliberately returns failure when required middleware directories are absent.
+Wheel checks preserve the source geometry/materials, verify forward/reverse and
+turning arcs, stop rotation at collision, reject damaged metadata, and check 864
+camera/steering/roll combinations. The split tyres add no triangles or textures;
+their static vertex buffers are allocated once and reuse the existing textures.
 
 ## Source assessment and next milestones
 
@@ -114,8 +125,8 @@ archive. Its README points to a separate archive for additional build files.
 Next milestones:
 
 1. Download/inventory the supplied additional archive when its storage server is accessible.
-2. Add vehicle hierarchy and wheel animation support, and import a complete
-   drivable vehicle asset when available.
+2. Test the wheel-animation build on PSP, then add support for original vehicle
+   hierarchies and import a complete drivable vehicle asset when available.
 3. Refine collision, then add on-foot movement, streaming,
    audio, and mission execution in
    separately testable stages; reuse compatible original logic where practical.

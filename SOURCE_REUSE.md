@@ -31,9 +31,21 @@ Acceleration, braking, and rendering remain prototype code. World geometry now i
 scenery sample documented in `assets/README.md`.
 The visual player vehicle uses the original CompactA parked-car mesh and textures
 documented in `assets/VEHICLE.md`. Its imported appearance does not add original
-wheel animation, suspension, or vehicle damage behavior.
-This is reuse of the original steering controller, not a claim that original
-vehicle physics or complete gameplay has been ported.
+suspension or vehicle damage behavior.
+
+`src/wheels.c` adapts the rolling relation from
+[`Wheel::CalculateRotAngle`](https://github.com/Svxy/The-Simpsons-Hit-and-Run/blob/0cf35df0a921a803a69d0da4c2aca02aa2543f03/game/code/worldsim/redbrick/wheel.cpp#L271):
+project movement along the wheel facing and divide travel by radius. The original
+uses suspension-point velocities and `dt`; the replacement uses each tyre pivot's
+actual displacement after the prototype collision step. Front-wheel facing uses
+the smoothed angle returned by the adapted steering controller. Rotation is bounded
+and accumulated per tyre. Original wheel copyright attribution is included in
+the file. The geometry-derived pivots and standalone loader are new code.
+Original suspension, e-brake, burnout and tyre-slip branches are omitted.
+
+The original steering controller and wheel-rolling relation run within the
+replacement engine. The original vehicle physics and complete gameplay are
+still absent.
 
 Native tests cover the original rate limit, angle change at 50 km/h, half-top-speed
 attenuation, target settling, prevention of negative sensitivity, and direction

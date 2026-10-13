@@ -66,10 +66,13 @@ the edge of imported ground. Missions, sound, and on-foot gameplay are absent.
 If scenery is missing or invalid, the screen identifies the test-ground fallback.
 
 Optimized clipping build 716b316 was reported at locked 60 FPS on PSP-3000 with
-ARK 5. This build adds the original CompactA visual model; its two draw batches
-reuse the texture renderer. The existing collision footprint and steering stay
-in use. Wheels are static; original vehicle physics/damage are not implemented.
-Check Vehicle: CompactA in the HUD, model appearance/direction, roads and FPS.
+ARK 5. The user confirmed the later CompactA vehicle build e45c6e0 works perfectly.
+This build animates all four original tyres and steers the front pair. Rotation
+follows actual movement after collision, including reverse. The existing steering
+and collision footprint stay in use. Original suspension/damage are absent.
+Check Vehicle: CompactA and Wheel animation ON in the HUD. Check forward/reverse
+rolling, front steering, stopping at walls, reset, road continuity and FPS.
+This wheel-animation build has not yet been tested on a physical PSP.
 The sample still has fixed map boundaries; additional map geometry is not included.
 Collision approximates the car with two spheres and uses rendered geometry,
 not original collision volumes. The camera can still clip through scenery.
@@ -86,6 +89,7 @@ with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED) as arch
     archive.writestr("PSP/GAME/SHARPSP/assets/springfield.stx", (ROOT / "assets/springfield.stx").read_bytes())
     archive.writestr("PSP/GAME/SHARPSP/assets/compact.shm", (ROOT / "assets/compact.shm").read_bytes())
     archive.writestr("PSP/GAME/SHARPSP/assets/compact.stx", (ROOT / "assets/compact.stx").read_bytes())
+    archive.writestr("PSP/GAME/SHARPSP/assets/compact.swh", (ROOT / "assets/compact.swh").read_bytes())
     archive.writestr("PSP/GAME/SHARPSP/assets/compact.json", (ROOT / "assets/compact.json").read_bytes())
     archive.writestr("VEHICLE.md", (ROOT / "assets/VEHICLE.md").read_bytes())
 with zipfile.ZipFile(args.output) as archive:
@@ -93,6 +97,7 @@ with zipfile.ZipFile(args.output) as archive:
         or archive.read("PSP/GAME/SHARPSP/assets/springfield.shm") != (ROOT / "assets/springfield.shm").read_bytes()
         or archive.read("PSP/GAME/SHARPSP/assets/springfield.stx") != (ROOT / "assets/springfield.stx").read_bytes()
         or archive.read("PSP/GAME/SHARPSP/assets/compact.shm") != (ROOT / "assets/compact.shm").read_bytes()
-        or archive.read("PSP/GAME/SHARPSP/assets/compact.stx") != (ROOT / "assets/compact.stx").read_bytes()):
+        or archive.read("PSP/GAME/SHARPSP/assets/compact.stx") != (ROOT / "assets/compact.stx").read_bytes()
+        or archive.read("PSP/GAME/SHARPSP/assets/compact.swh") != (ROOT / "assets/compact.swh").read_bytes()):
         parser.error("Package verification failed")
 print(f"Packaged {args.output}: MIPS PRX, standard PSP memory, ZIP integrity verified")
