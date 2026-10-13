@@ -25,7 +25,8 @@ void car_step(Car *car, Controls controls, float dt)
     else car->speed -= copysignf(deceleration, car->speed);
     car->speed = clamp(car->speed, -10, 32);
     float turn = steering * car->speed / (4.0f + fabsf(car->speed) * 0.35f);
-    car->heading += turn * dt;
+    /* Looking along +Z with Y up, camera-right is -X. */
+    car->heading -= turn * dt;
     car->x += sinf(car->heading) * car->speed * dt;
     car->z += cosf(car->heading) * car->speed * dt;
     /* Placeholder test-ground boundary, rather than streamed world geometry. */

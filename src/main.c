@@ -1,6 +1,7 @@
 #include <pspkernel.h>
 #include <pspctrl.h>
 #include <pspdisplay.h>
+#include <pspdebug.h>
 #include <pspgu.h>
 #include <pspgum.h>
 #include <math.h>
@@ -12,6 +13,7 @@ PSP_HEAP_SIZE_KB(8192);
 
 static volatile int running = 1;
 static unsigned int __attribute__((aligned(16))) commands[65536];
+static unsigned int draw_offset = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
 
 static int exit_callback(int arg1, int arg2, void *common)
@@ -90,8 +92,13 @@ static void render(const Car *car)
     box(car->x,1.3f,car->z,1.5f,0.65f,1.8f,car->heading,0xff654d32);
     sceGuFinish();
     sceGuSync(0,0);
+    pspDebugScreenSetOffset(draw_offset);
+    pspDebugScreenSetXY(0,0);
+    pspDebugScreenPrintf("SHAR PSP: driving prototype | %3d km/h    \n", (int)(fabsf(car->speed) * 3.6f));
+    pspDebugScreenPrintf("X: gas  Square: brake  Circle: reverse      \n");
+    pspDebugScreenPrintf("Stick/D-pad: steer  Start: reset  Home: exit \n");
     sceDisplayWaitVblankStart();
-    sceGuSwapBuffers();
+    draw_offset = (unsigned int)sceGuSwapBuffers();
 }
 
 int main(void)
@@ -100,6 +107,7 @@ int main(void)
     if (thread >= 0) sceKernelStartThread(thread,0,0);
     sceCtrlSetSamplingCycle(0);
     sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
+    pspDebugScreenInit();
     sceGuInit();
     sceGuStart(GU_DIRECT,commands);
     sceGuDrawBuffer(GU_PSM_8888, (void *)0, 512);

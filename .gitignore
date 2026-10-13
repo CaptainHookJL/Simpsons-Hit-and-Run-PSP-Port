@@ -2,5 +2,6 @@
 *.elf
 *.prx
 *.PBP
+*.zip
 PARAM.SFO
 build/

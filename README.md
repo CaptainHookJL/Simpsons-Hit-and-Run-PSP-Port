@@ -16,8 +16,16 @@ cd /workspace/Simpsons-Hit-and-Run-PSP-Port
 make -j2
 ```
 
-Open `EBOOT.PBP` in PPSSPP, or copy it to
-`PSP/GAME/SHARPSP/EBOOT.PBP` on a homebrew-capable PSP.
+Create an installation ZIP with:
+
+```sh
+python3 tools/package_psp.py /tmp/SHAR-PSP-Prototype.zip
+```
+
+Extract it and copy its `PSP` folder to the root of your PSP Memory Stick.
+Launch it through Game > Memory Stick. It requires custom firmware that supports
+unsigned homebrew. Alternatively open `EBOOT.PBP` in PPSSPP.
+The executable is built as a relocatable PSP PRX inside the PBP package.
 The target uses an 8 MiB heap and does not request the PSP Slim expanded memory.
 
 Controls: analog stick or D-pad steers, Cross accelerates, Square brakes,
@@ -37,7 +45,7 @@ python3 tools/audit_source.py /workspace/shar-source
 ```
 
 The driving test covers acceleration, braking without unintended reverse,
-reverse steering, boundary stopping, and zero elapsed time. The original-source
+forward and reverse steering, boundary stopping, and zero elapsed time. The original-source
 audit deliberately returns failure when required middleware directories are absent.
 
 ## Source assessment and next milestones

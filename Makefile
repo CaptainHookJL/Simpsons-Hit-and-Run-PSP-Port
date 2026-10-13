@@ -6,6 +6,8 @@ ASFLAGS = $(CFLAGS)
 LIBS = -lpspgum -lpspgu -lm
 EXTRA_TARGETS = EBOOT.PBP
 PSP_EBOOT_TITLE = SHAR PSP - Driving Prototype
+BUILD_PRX = 1
+PSP_LARGE_MEMORY = 0
 PSPSDK := $(shell psp-config --pspsdk-path)
 ifeq ($(strip $(PSPSDK)),)
 $(error PSPSDK not found. Set PSPDEV and add $$PSPDEV/bin to PATH)
