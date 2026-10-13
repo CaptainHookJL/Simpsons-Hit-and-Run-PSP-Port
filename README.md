@@ -17,7 +17,8 @@ on a PSP-3000 with ARK 5. It clips textured world triangles at camera planes,
 preserving UVs and colours, with cached bounds and direct draws for fully visible
 meshes. See [hardware validation](docs/HARDWARE_VALIDATION.md) for the tested
 build and the limits of that evidence. The imported area remains a bounded sample.
-The new CompactA vehicle build still needs a hardware appearance and FPS check.
+The user also confirmed CompactA vehicle build `e45c6e0` "works perfectly" on
+the same PSP; the locked-60-FPS measurement above refers to the earlier baseline.
 
 ## Build
 

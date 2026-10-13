@@ -16,7 +16,8 @@ the model to fit the existing 1.8-by-3.6-metre collision footprint. Actual visua
 dimensions are about 1.74 m wide, 1.42 m tall, and 3.6 m long. UVs are retained
 and the texture sidecar CRC binds to the normalized mesh. Source +Z is used as
 the vehicle's forward direction, consistent with the original vehicle code;
-hardware checking will confirm how this exported mesh appears while driving.
+the user subsequently reported vehicle build `e45c6e0` "works perfectly" on the
+PSP-3000 with ARK 5.
 
 The player model renders with the car position and yaw through the same texture
 draw path as scenery. It stays within the chase camera's view, so it does not

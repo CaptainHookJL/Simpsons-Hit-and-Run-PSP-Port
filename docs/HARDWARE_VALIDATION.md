@@ -17,9 +17,10 @@ Prior hardware results:
 | 4722096 | Textured build runs at 60 FPS, with visible geometry disappearing. |
 | 116afb7 | Software clipping fixes disappearing roads, 30–60 FPS. |
 | 716b316 | Optimized clipping restores locked 60 FPS. |
+| e45c6e0 | Original CompactA vehicle build: "works perfectly"; no separate FPS figure supplied. |
 
 The optimization passes native comparison against the full clipper across 60
 camera views, with matching submitted geometry and UVs. Subsequent rendering or
 asset changes should be checked on the same device and driving route for road
 continuity, collision, and FPS. Other PSP models, firmware configurations, larger
-maps, and original vehicle assets have not been validated by these reports.
+maps, and other original vehicle assets have not been validated by these reports.
