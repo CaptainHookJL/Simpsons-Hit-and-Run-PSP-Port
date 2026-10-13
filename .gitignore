@@ -1,0 +1,6 @@
+*.o
+*.elf
+*.prx
+*.PBP
+PARAM.SFO
+build/
