@@ -4,8 +4,11 @@
 #include <pspdebug.h>
 #include <pspgu.h>
 #include <pspgum.h>
+#include <pspiofilemgr.h>
 #include <math.h>
+#include <string.h>
 #include "driving.h"
+#include "mesh.h"
 
 PSP_MODULE_INFO("SHAR Driving Prototype", 0, 0, 1);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -14,6 +17,8 @@ PSP_HEAP_SIZE_KB(8192);
 static volatile int running = 1;
 static unsigned int __attribute__((aligned(16))) commands[65536];
 static unsigned int draw_offset = 0;
+static StaticMesh world_mesh = {0};
+static unsigned int measured_fps = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
 
 static int exit_callback(int arg1, int arg2, void *common)
@@ -75,17 +80,25 @@ static void render(const Car *car)
                              car->z + cosf(car->heading) * 4};
     ScePspFVector3 up = {0,1,0};
     sceGumLookAt(&eye, &target, &up);
-    box(0,-0.6f,0,240,1,240,0,0xff53864b);
-    box(0,-0.04f,0,14,0.1f,230,0,0xff555555);
-    box(0,-0.03f,0,230,0.1f,14,0,0xff555555);
-    for (int i = -10; i <= 10; ++i) {
-        box(0,0.04f,i * 10.0f,0.2f,0.04f,4,0,0xffdddddd);
-        box(i * 10.0f,0.05f,0,4,0.04f,0.2f,0,0xffdddddd);
-    }
-    for (int i = -2; i <= 2; ++i) {
-        for (int j = -2; j <= 2; ++j) {
-            if (i == 0 || j == 0) continue;
-            box(i * 35.0f,4,j * 35.0f,14,8,14,0,0xffa0a0b0);
+    if (world_mesh.vertices) {
+        sceGumMatrixMode(GU_MODEL);
+        sceGumLoadIdentity();
+        /* Persistent aligned mesh memory is flushed once after loading. */
+        sceGumDrawArray(GU_TRIANGLES,GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                       world_mesh.count,0,world_mesh.vertices);
+    } else {
+        box(0,-0.6f,0,240,1,240,0,0xff53864b);
+        box(0,-0.04f,0,14,0.1f,230,0,0xff555555);
+        box(0,-0.03f,0,230,0.1f,14,0,0xff555555);
+        for (int i = -10; i <= 10; ++i) {
+            box(0,0.04f,i * 10.0f,0.2f,0.04f,4,0,0xffdddddd);
+            box(i * 10.0f,0.05f,0,4,0.04f,0.2f,0,0xffdddddd);
+        }
+        for (int i = -2; i <= 2; ++i) {
+            for (int j = -2; j <= 2; ++j) {
+                if (i == 0 || j == 0) continue;
+                box(i * 35.0f,4,j * 35.0f,14,8,14,0,0xffa0a0b0);
+            }
         }
     }
     box(car->x,0.65f,car->z,1.8f,0.8f,3.6f,car->heading,0xff40c8ff);
@@ -94,19 +107,32 @@ static void render(const Car *car)
     sceGuSync(0,0);
     pspDebugScreenSetOffset(draw_offset);
     pspDebugScreenSetXY(0,0);
-    pspDebugScreenPrintf("SHAR PSP: driving prototype | %3d km/h    \n", (int)(fabsf(car->speed) * 3.6f));
+    pspDebugScreenPrintf("SHAR PSP | %3d km/h | %2u FPS              \n", (int)(fabsf(car->speed) * 3.6f),measured_fps);
     pspDebugScreenPrintf("X: gas  Square: brake  Circle: reverse      \n");
     pspDebugScreenPrintf("Stick/D-pad: steer  Start: reset  Home: exit \n");
+    pspDebugScreenPrintf("%s\n",world_mesh.vertices ? "Springfield geometry sample (no textures)   " : "Scenery missing/invalid: test-ground fallback");
     sceDisplayWaitVblankStart();
     draw_offset = (unsigned int)sceGuSwapBuffers();
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
     int thread = sceKernelCreateThread("Callbacks", callback_thread, 0x11, 0x1000, 0, 0);
     if (thread >= 0) sceKernelStartThread(thread,0,0);
     sceCtrlSetSamplingCycle(0);
     sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
+    /* Homebrew launchers can differ in their initial working directory. */
+    if (argc > 0 && argv[0] && strlen(argv[0]) < 256) {
+        char directory[256];
+        strcpy(directory,argv[0]);
+        char *slash = strrchr(directory,'/');
+        if (slash) {
+            slash[1] = '\0';
+            sceIoChdir(directory);
+        }
+    }
+    if (mesh_load(&world_mesh,"assets/springfield.shm") == 0)
+        sceKernelDcacheWritebackRange(world_mesh.vertices,world_mesh.count*sizeof(MeshVertex));
     pspDebugScreenInit();
     sceGuInit();
     sceGuStart(GU_DIRECT,commands);
@@ -128,14 +154,19 @@ int main(void)
 
     Car car;
     car_reset(&car);
+    if (world_mesh.vertices) car.heading = 3.14159265f;
     unsigned int previous_buttons = 0;
     unsigned int previous_time = sceKernelGetSystemTimeLow();
+    unsigned int fps_start = previous_time;
+    unsigned int fps_frames = 0;
     float accumulator = 0;
     while (running) {
         SceCtrlData pad;
         sceCtrlReadBufferPositive(&pad,1);
-        if ((pad.Buttons & PSP_CTRL_START) && !(previous_buttons & PSP_CTRL_START))
+        if ((pad.Buttons & PSP_CTRL_START) && !(previous_buttons & PSP_CTRL_START)) {
             car_reset(&car);
+            if (world_mesh.vertices) car.heading = 3.14159265f;
+        }
         previous_buttons = pad.Buttons;
         float steering = (pad.Lx - 128) / 127.0f;
         if (fabsf(steering) < 0.15f) steering = 0;
@@ -144,6 +175,13 @@ int main(void)
         Controls controls = {steering, !!(pad.Buttons & PSP_CTRL_CROSS),
             !!(pad.Buttons & PSP_CTRL_SQUARE), !!(pad.Buttons & PSP_CTRL_CIRCLE)};
         unsigned int now = sceKernelGetSystemTimeLow();
+        ++fps_frames;
+        unsigned int fps_elapsed = now - fps_start;
+        if (fps_elapsed >= 1000000) {
+            measured_fps = (unsigned int)(fps_frames * 1000000.0f / fps_elapsed);
+            fps_frames = 0;
+            fps_start = now;
+        }
         float elapsed = (now - previous_time) / 1000000.0f;
         previous_time = now;
         accumulator += elapsed > 0.1f ? 0.1f : elapsed;
@@ -154,6 +192,7 @@ int main(void)
         render(&car);
     }
     sceGuTerm();
+    mesh_free(&world_mesh);
     sceKernelExitGame();
     return 0;
 }

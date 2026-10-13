@@ -57,9 +57,11 @@ Circle: reverse
 Start: reset vehicle
 Home/PS: quit
 
-The screen shows speed and controls. Buildings are visual placeholders without
-collision. The test-ground edge stops the vehicle. There are no missions,
-original assets, sound, or on-foot gameplay.
+The screen shows speed, controls, and scenery load status. This package includes
+untextured original Springfield geometry near the Simpsons house. The car remains
+a placeholder; scenery collision, terrain-following, missions, sound, and on-foot
+gameplay are not implemented. Driving beyond the imported area leaves the scenery.
+If scenery is missing or invalid, the screen identifies the test-ground fallback.
 
 The build and native driving tests passed. Hardware and PPSSPP execution
 have not yet been verified. If launch fails, record your PSP model, firmware
@@ -70,7 +72,11 @@ with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED) as arch
     archive.writestr("PSP/GAME/SHARPSP/EBOOT.PBP", binary)
     archive.writestr("INSTALL.txt", instructions)
     archive.writestr("SOURCE_REUSE.md", (ROOT / "SOURCE_REUSE.md").read_bytes())
+    archive.writestr("THIRD_PARTY.md", (ROOT / "THIRD_PARTY.md").read_bytes())
+    archive.writestr("ASSETS.md", (ROOT / "assets/README.md").read_bytes())
+    archive.writestr("PSP/GAME/SHARPSP/assets/springfield.shm", (ROOT / "assets/springfield.shm").read_bytes())
 with zipfile.ZipFile(args.output) as archive:
-    if archive.testzip() is not None or archive.read("PSP/GAME/SHARPSP/EBOOT.PBP") != binary:
+    if (archive.testzip() is not None or archive.read("PSP/GAME/SHARPSP/EBOOT.PBP") != binary
+        or archive.read("PSP/GAME/SHARPSP/assets/springfield.shm") != (ROOT / "assets/springfield.shm").read_bytes()):
         parser.error("Package verification failed")
 print(f"Packaged {args.output}: MIPS PRX, standard PSP memory, ZIP integrity verified")

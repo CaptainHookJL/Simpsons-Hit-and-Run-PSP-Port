@@ -1,7 +1,8 @@
 # Hit & Run PSP development
 
 This is an early replacement-engine driving prototype for PSP, not a playable
-port of the original game. It contains no original game assets or middleware.
+port of the original game. It includes a small original Springfield geometry
+sample; original middleware is not bundled.
 It now includes the original game's speed-dependent, smoothed steering controller,
 adapted to standalone C and linked into the PSP executable. See [source reuse
 details](SOURCE_REUSE.md) for attribution, changes, and the boundaries of this reuse.
@@ -39,16 +40,24 @@ The target uses an 8 MiB heap and does not request the PSP Slim expanded memory.
 Controls: analog stick or D-pad steers, Cross accelerates, Square brakes,
 Circle reverses, Start resets, and Home exits on PSP.
 
-The test ground contains roads and placeholder buildings. Buildings are visual
-only; there is a boundary at 110 metres along either ground axis. There is no
-mission system, pedestrian gameplay, sound, original suspension/force physics, or asset
-loading. Runtime graphics and controls still require PPSSPP/hardware validation.
+The installation ZIP includes untextured scenery near the Simpsons house,
+converted from the supplied source checkout. The car is still placeholder geometry.
+The screen shows scene load status and measured FPS. If scenery fails to load,
+it falls back to the original test ground. The car stays on a flat plane and can
+pass through scenery; terrain-following and collision are not implemented.
+There is a boundary at 110 metres along either ground axis, but the scenery sample
+is smaller. Missions, pedestrian gameplay, sound, and original suspension/force
+physics are absent. Graphics and controls still require PPSSPP/hardware validation.
+See [asset provenance and conversion instructions](assets/README.md).
 
 ## Checks
 
 ```sh
 gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-driving-test
 /tmp/shar-driving-test
+python3 -m unittest discover -s tests -p 'test_*.py'
+gcc -std=c99 -Wall -Wextra -Werror tests/mesh_test.c src/mesh.c -lm -o /tmp/shar-mesh-test
+/tmp/shar-mesh-test assets/springfield.shm
 python3 tools/audit_source.py /workspace/shar-source
 ```
 
@@ -69,11 +78,16 @@ archive. Its README points to a separate archive for additional build files.
 Next milestones:
 
 1. Validate this EBOOT on PPSSPP and PSP, including steering direction and exits.
-2. Inventory the supplied additional archive when network access is available.
-3. Implement a bounded, validated Pure3D asset importer and convert one vehicle
-   and a small world section into PSP-sized meshes and textures.
-4. Add collision, on-foot movement, streaming, audio, and mission execution in
+2. Download/inventory the supplied additional archive when its storage server is accessible.
+3. Extend the static Pure3D importer with textures and vehicle hierarchy support,
+   then replace the placeholder car with one original vehicle.
+4. Add terrain-following and scenery collision, then on-foot movement, streaming,
+   audio, and mission execution in
    separately testable stages; reuse compatible original logic where practical.
 
-The MEGA folder has not been inspected: current network policy blocks MEGA.
-Do not assume it contains the missing libraries until its contents are verified.
+The MEGA API lists one 3,399,653,232-byte archive named
+`The Simpsons Hit & Run - PC.zip` under a compiled-PC folder. Archive contents
+have not been inspected: its current download server,
+`gfs214n104.userstorage.mega.co.nz`, returns HTTP 403. Its required network entry
+was saved in environment settings alongside `mega.nz` and `g.api.mega.co.nz`.
+Do not assume the archive contains missing middleware until contents are verified.

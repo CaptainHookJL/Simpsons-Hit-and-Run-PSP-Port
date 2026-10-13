@@ -27,7 +27,8 @@ vehicle-type branches are omitted, along with inactive experiments and assertion
 
 The PSP executable actually calls this code each simulation step. The resulting
 wheel angle drives a new bicycle model, not the original suspension/force solver.
-Acceleration, braking, rendering, and world geometry remain prototype code.
+Acceleration, braking, and rendering remain prototype code. World geometry now includes a converted original
+scenery sample documented in `assets/README.md`.
 This is reuse of the original steering controller, not a claim that original
 vehicle physics or complete gameplay has been ported.
 

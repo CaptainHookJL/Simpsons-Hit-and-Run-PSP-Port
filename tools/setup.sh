@@ -13,3 +13,6 @@ psp-gcc --version
 make -j2
 gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-driving-test
 /tmp/shar-driving-test
+python3 -m unittest discover -s tests -p 'test_*.py'
+gcc -std=c99 -Wall -Wextra -Werror tests/mesh_test.c src/mesh.c -lm -o /tmp/shar-mesh-test
+/tmp/shar-mesh-test assets/springfield.shm

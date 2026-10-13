@@ -1,0 +1,22 @@
+{
+  "source_repository": "Svxy/The-Simpsons-Hit-and-Run",
+  "commit": "0cf35df0a921a803a69d0da4c2aca02aa2543f03",
+  "inputs": [
+    {
+      "path": "game/build/art/WORK/STORE/PC/levels/L01B/z1/statics/z1_statics.p3d",
+      "sha256": "7b6a5eb18ed9cce8ba5688b95ef712b7604ca55494c4afd7c9d9bf36a8c953c1"
+    },
+    {
+      "path": "game/build/art/WORK/STORE/PC/levels/L01B/z1/track/z1_track.p3d",
+      "sha256": "9de375fecdf4f182578bdc5256252ae9803ec710d08a659f4b7696d3879778d1"
+    }
+  ],
+  "output_sha256": "48058788751c2826bcf6e7c4aa9469226ae81ac32ee666f24caea4d9063a4b8d",
+  "center": [
+    225,
+    3.27,
+    -157
+  ],
+  "radius": 45,
+  "triangles": 6437
+}
