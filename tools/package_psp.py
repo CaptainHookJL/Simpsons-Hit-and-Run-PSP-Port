@@ -65,9 +65,10 @@ the edge of imported ground. Missions, sound, and on-foot gameplay are absent.
 If scenery is missing or invalid, the screen identifies the test-ground fallback.
 
 The previous textured build was reported to run at 60 FPS on PSP-3000 with ARK 5,
-but showed geometry popping while driving. This build enables PSP GE clip planes
-to address triangles crossing the view boundary. The change needs a hardware test:
-watch road/wall edges while driving and turning, and check the FPS counter.
+but showed holes in the road while driving. This build adds software clipping of
+world triangles at the camera planes, with UV and colour interpolation. The HUD
+should show Software clipping ON. The change needs a hardware test: watch the
+road behind the car while driving/turning, and check the FPS counter.
 The sample still has fixed map boundaries; additional map geometry is not included.
 Collision approximates the car with two spheres and uses rendered geometry,
 not original collision volumes. The camera can still clip through scenery.

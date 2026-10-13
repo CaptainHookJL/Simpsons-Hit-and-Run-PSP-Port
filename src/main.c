@@ -11,6 +11,7 @@
 #include "mesh.h"
 #include "collision.h"
 #include "texture.h"
+#include "clip.h"
 
 PSP_MODULE_INFO("SHAR Driving Prototype", 0, 0, 1);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -22,6 +23,8 @@ static unsigned int draw_offset = 0;
 static StaticMesh world_mesh = {0};
 static CollisionWorld collision_world = {0};
 static TexturedScene textured_scene = {0};
+static ClippedScene clipped_scene = {0};
+static int software_clip_active = 0;
 static unsigned int measured_fps = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
 
@@ -84,6 +87,15 @@ static void render(const Car *car)
                              car->z + cosf(car->heading) * 4};
     ScePspFVector3 up = {0,1,0};
     sceGumLookAt(&eye, &target, &up);
+    software_clip_active=0;
+    ClipCamera camera;
+    if (clipped_scene.vertices && clip_camera(&camera,(ClipVector){eye.x,eye.y,eye.z},
+            (ClipVector){target.x,target.y,target.z},60,480.0f/272.0f,0.5f,300)==0 &&
+            clip_scene(&clipped_scene,&textured_scene,&camera)==0) {
+        software_clip_active=1;
+        if (clipped_scene.count)
+            sceKernelDcacheWritebackRange(clipped_scene.vertices,clipped_scene.count*sizeof(TexturedVertex));
+    }
     if (world_mesh.vertices) {
         sceGumMatrixMode(GU_MODEL);
         sceGumLoadIdentity();
@@ -99,16 +111,24 @@ static void render(const Car *car)
             sceGuTexScale(1,1);
             sceGuTexOffset(0,0);
             uint32_t previous_texture=0xffffffffu;
-            for (uint32_t i=0;i<textured_scene.batch_count;++i) {
-                TextureBatch b=textured_scene.batches[i];
+            uint32_t batch_count=software_clip_active?clipped_scene.batch_count:textured_scene.batch_count;
+            TextureBatch *batches=software_clip_active?clipped_scene.batches:textured_scene.batches;
+            TexturedVertex *vertices=software_clip_active?clipped_scene.vertices:textured_scene.vertices;
+            for (uint32_t i=0;i<batch_count;++i) {
+                TextureBatch b=batches[i];
                 if (b.texture!=previous_texture) {
                     SceneTexture t=textured_scene.textures[b.texture];
                     sceGuTexImage(0,t.width,t.height,t.width,t.pixels);
                     sceGuTexFlush();
                     previous_texture=b.texture;
                 }
-                sceGumDrawArray(GU_TRIANGLES,GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                               b.count,0,textured_scene.vertices+b.first);
+                for (uint32_t offset=0;offset<b.count;) {
+                    uint32_t count=b.count-offset;
+                    if (count>65535) count=65535; /* GE primitive count is 16-bit */
+                    sceGumDrawArray(GU_TRIANGLES,GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                                   count,0,vertices+b.first+offset);
+                    offset+=count;
+                }
             }
             sceGuDisable(GU_ALPHA_TEST);
             sceGuDisable(GU_TEXTURE_2D);
@@ -143,6 +163,7 @@ static void render(const Car *car)
     pspDebugScreenPrintf("%s\n",textured_scene.vertices ? "Springfield textures ON                     " :
                         (world_mesh.vertices ? "Textures OFF | Springfield geometry only    " : "Scenery missing/invalid: test-ground fallback"));
     pspDebugScreenPrintf("%s\n",collision_world.triangles ? "Collision ON | terrain following ON         " : "Collision OFF | terrain following OFF       ");
+    pspDebugScreenPrintf("%s\n",software_clip_active ? "Software clipping ON                        " : "Software clipping OFF                       ");
     sceDisplayWaitVblankStart();
     draw_offset = (unsigned int)sceGuSwapBuffers();
 }
@@ -167,6 +188,7 @@ int main(int argc, char *argv[])
         sceKernelDcacheWritebackRange(world_mesh.vertices,world_mesh.count*sizeof(MeshVertex));
     if (world_mesh.vertices) collision_build(&collision_world,&world_mesh);
     if (texture_load(&textured_scene,&world_mesh,"assets/springfield.stx")==0) {
+        clip_create(&clipped_scene,&textured_scene);
         sceKernelDcacheWritebackRange(textured_scene.vertices,textured_scene.count*sizeof(TexturedVertex));
         for (uint32_t i=0;i<textured_scene.texture_count;++i) {
             SceneTexture t=textured_scene.textures[i];
@@ -239,6 +261,7 @@ int main(int argc, char *argv[])
         render(&car);
     }
     sceGuTerm();
+    clip_free(&clipped_scene);
     texture_free(&textured_scene);
     collision_free(&collision_world);
     mesh_free(&world_mesh);

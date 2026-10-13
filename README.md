@@ -14,9 +14,12 @@ Extract it and copy the `PSP` folder to your Memory Stick's root, then launch
 SHAR PSP from Game > Memory Stick. Requires custom firmware supporting unsigned
 homebrew. The user reported scenery (`e7f80f7`), collision (`3d41e77`), and textured
 (`4722096`) builds running at 60 FPS on a PSP-3000 with ARK 5. The textured build
-showed visible geometry popping while driving. This build enables the PSP GE
-clip planes used by the official PSPSDK samples; that correction still needs a
-hardware check. The imported area remains a bounded scenery sample.
+showed visible geometry popping while driving. Enabling GE clip planes alone did
+not resolve the reported holes in the road. This build clips textured world
+triangles against the camera's near/far and side planes in software before GPU
+submission. The visible polygons retain interpolated UVs and vertex colours.
+The road-hole correction and its FPS still need a hardware check. The imported
+area remains a bounded scenery sample.
 
 ## Build
 
@@ -64,6 +67,11 @@ can therefore behave differently from the original game. The car stays upright:
 there is no suspension, pitch/roll, jumping, sliding response, or damage system.
 The chase camera does not collide with scenery yet.
 
+The HUD reports `Software clipping ON` when the new rendering path is active.
+Its buffers are allocated once at startup (about 3.1 MiB maximum vertex scratch
+for this sample); frames reuse them. Geometry outside the view is rejected,
+while triangles crossing view planes are split instead of being dropped.
+
 ## Checks
 
 ```sh
@@ -76,6 +84,8 @@ gcc -std=c99 -Wall -Wextra -Werror tests/collision_test.c src/collision.c src/me
 /tmp/shar-collision-test assets/springfield.shm
 gcc -std=c99 -Wall -Wextra -Werror tests/texture_test.c src/texture.c src/mesh.c -lm -o /tmp/shar-texture-test
 /tmp/shar-texture-test assets/springfield.shm assets/springfield.stx
+gcc -std=c99 -Wall -Wextra -Werror tests/clip_test.c src/clip.c src/texture.c src/mesh.c -lm -o /tmp/shar-clip-test
+/tmp/shar-clip-test assets/springfield.shm assets/springfield.stx
 python3 tools/audit_source.py /workspace/shar-source
 ```
 
@@ -95,7 +105,7 @@ archive. Its README points to a separate archive for additional build files.
 
 Next milestones:
 
-1. Check the clipping correction on PSP, watching road/wall edges while driving and turning, and FPS.
+1. Check the software-clipped build on PSP, watching the road behind the car and screen edges, and FPS.
 2. Download/inventory the supplied additional archive when its storage server is accessible.
 3. Extend the Pure3D importer with vehicle hierarchy support,
    then replace the placeholder car with one original vehicle.
