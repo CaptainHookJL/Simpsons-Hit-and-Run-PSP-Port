@@ -11,5 +11,5 @@ fi
 cd /workspace/Simpsons-Hit-and-Run-PSP-Port
 psp-gcc --version
 make -j2
-gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c -lm -o /tmp/shar-driving-test
+gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-driving-test
 /tmp/shar-driving-test

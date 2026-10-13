@@ -1,4 +1,5 @@
 #include "driving.h"
+#include "upstream/vehicle_steering.h"
 #include <math.h>
 
 static float clamp(float value, float low, float high)
@@ -8,7 +9,7 @@ static float clamp(float value, float low, float high)
 
 void car_reset(Car *car)
 {
-    *car = (Car){0, 0, 0, 0};
+    *car = (Car){0};
 }
 
 void car_step(Car *car, Controls controls, float dt)
@@ -24,7 +25,14 @@ void car_step(Car *car, Controls controls, float dt)
     if (fabsf(car->speed) <= deceleration) car->speed = 0;
     else car->speed -= copysignf(deceleration, car->speed);
     car->speed = clamp(car->speed, -10, 32);
-    float turn = steering * car->speed / (4.0f + fabsf(car->speed) * 0.35f);
+    float speedKmh = fabsf(car->speed) * 3.6f;
+    float wheelAngle = shar_update_steering(steering, speedKmh,
+        speedKmh / SHAR_DEFAULT_TOP_SPEED_KMH,
+        SHAR_DEFAULT_HIGH_SPEED_STEERING_DROP, SHAR_DEFAULT_MAX_WHEEL_ANGLE_DEG,
+        dt, &car->steering_input);
+    /* The original steering controller drives a simplified bicycle model.
+       Wheelbase is prototype tuning, not a value from an original asset. */
+    float turn = car->speed * tanf(wheelAngle) / 2.6f;
     /* Looking along +Z with Y up, camera-right is -X. */
     car->heading -= turn * dt;
     car->x += sinf(car->heading) * car->speed * dt;

@@ -2,8 +2,9 @@
 
 This is an early replacement-engine driving prototype for PSP, not a playable
 port of the original game. It contains no original game assets or middleware.
-The original source was inspected to identify platform and middleware boundaries;
-its gameplay code has not yet been integrated.
+It now includes the original game's speed-dependent, smoothed steering controller,
+adapted to standalone C and linked into the PSP executable. See [source reuse
+details](SOURCE_REUSE.md) for attribution, changes, and the boundaries of this reuse.
 
 ## Download for PSP
 
@@ -40,13 +41,13 @@ Circle reverses, Start resets, and Home exits on PSP.
 
 The test ground contains roads and placeholder buildings. Buildings are visual
 only; there is a boundary at 110 metres along either ground axis. There is no
-mission system, pedestrian gameplay, sound, original vehicle handling, or asset
+mission system, pedestrian gameplay, sound, original suspension/force physics, or asset
 loading. Runtime graphics and controls still require PPSSPP/hardware validation.
 
 ## Checks
 
 ```sh
-gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c -lm -o /tmp/shar-driving-test
+gcc -std=c99 -Wall -Wextra -Werror tests/driving_test.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-driving-test
 /tmp/shar-driving-test
 python3 tools/audit_source.py /workspace/shar-source
 ```

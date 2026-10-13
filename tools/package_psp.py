@@ -37,6 +37,7 @@ if memsize != 0:
 instructions = """SHAR PSP - Driving Prototype
 
 This is a replacement-engine driving test, not the full Simpsons game.
+It includes an adapted original Hit & Run steering controller. See SOURCE_REUSE.md.
 
 Requires a PSP configured to run unsigned homebrew (custom firmware).
 It is not a signed retail PSP release. No firmware installer is included.
@@ -68,6 +69,7 @@ args.output.parent.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
     archive.writestr("PSP/GAME/SHARPSP/EBOOT.PBP", binary)
     archive.writestr("INSTALL.txt", instructions)
+    archive.writestr("SOURCE_REUSE.md", (ROOT / "SOURCE_REUSE.md").read_bytes())
 with zipfile.ZipFile(args.output) as archive:
     if archive.testzip() is not None or archive.read("PSP/GAME/SHARPSP/EBOOT.PBP") != binary:
         parser.error("Package verification failed")

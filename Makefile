@@ -1,6 +1,6 @@
 TARGET = shar_psp
-OBJS = src/main.o src/driving.o
-CFLAGS = -O2 -G0 -Wall -Wextra -std=c99
+OBJS = src/main.o src/driving.o src/upstream/vehicle_steering.o
+CFLAGS = -O2 -G0 -Wall -Wextra -std=c99 -MMD -MP
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
 ASFLAGS = $(CFLAGS)
 LIBS = -lpspgum -lpspgu -lm
@@ -13,3 +13,4 @@ ifeq ($(strip $(PSPSDK)),)
 $(error PSPSDK not found. Set PSPDEV and add $$PSPDEV/bin to PATH)
 endif
 include $(PSPSDK)/lib/build.mak
+-include $(OBJS:.o=.d)
