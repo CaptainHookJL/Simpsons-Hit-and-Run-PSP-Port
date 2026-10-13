@@ -29,6 +29,9 @@ The PSP executable actually calls this code each simulation step. The resulting
 wheel angle drives a new bicycle model, not the original suspension/force solver.
 Acceleration, braking, and rendering remain prototype code. World geometry now includes a converted original
 scenery sample documented in `assets/README.md`.
+The visual player vehicle uses the original CompactA parked-car mesh and textures
+documented in `assets/VEHICLE.md`. Its imported appearance does not add original
+wheel animation, suspension, or vehicle damage behavior.
 This is reuse of the original steering controller, not a claim that original
 vehicle physics or complete gameplay has been ported.
 

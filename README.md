@@ -2,7 +2,7 @@
 
 This is an early replacement-engine driving prototype for PSP, not a playable
 port of the original game. It includes a small original Springfield geometry
-sample; original middleware is not bundled.
+sample and the original CompactA car model; original middleware is not bundled.
 It now includes the original game's speed-dependent, smoothed steering controller,
 adapted to standalone C and linked into the PSP executable. See [source reuse
 details](SOURCE_REUSE.md) for attribution, changes, and the boundaries of this reuse.
@@ -17,6 +17,7 @@ on a PSP-3000 with ARK 5. It clips textured world triangles at camera planes,
 preserving UVs and colours, with cached bounds and direct draws for fully visible
 meshes. See [hardware validation](docs/HARDWARE_VALIDATION.md) for the tested
 build and the limits of that evidence. The imported area remains a bounded sample.
+The new CompactA vehicle build still needs a hardware appearance and FPS check.
 
 ## Build
 
@@ -45,7 +46,10 @@ Controls: analog stick or D-pad steers, Cross accelerates, Square brakes,
 Circle reverses, Start resets, and Home exits on PSP.
 
 The installation ZIP includes textured scenery near the Simpsons house,
-converted from the supplied source checkout. The car is still placeholder geometry.
+converted from the supplied source checkout, plus the original CompactA parked-car
+mesh and two textures. Its rigid wheels are not animated yet. See
+[vehicle provenance and conversion](assets/VEHICLE.md). The HUD shows `Vehicle: CompactA`
+when it loads successfully; missing/invalid vehicle assets fall back to boxes.
 The screen shows texture/collision state and measured FPS. If scenery fails to load,
 it falls back to the original test ground. When scenery and the collision grid
 load, the screen shows `Collision ON | terrain following ON`. The car follows
@@ -57,7 +61,7 @@ untextured geometry remains visible. Recheck the same driving route after render
 or asset changes to confirm road continuity and the locked-60-FPS baseline.
 See [asset provenance and conversion instructions](assets/README.md).
 
-Collision uses two spheres to approximate the placeholder car and infers ground
+Collision uses two spheres to approximate the car and infers ground
 versus obstacles from the rendered triangles. It does not use the original
 game's authored collision volumes. Narrow gaps, shrubs, and decorative geometry
 can therefore behave differently from the original game. The car stays upright:
@@ -87,6 +91,8 @@ gcc -std=c99 -Wall -Wextra -Werror tests/texture_test.c src/texture.c src/mesh.c
 /tmp/shar-texture-test assets/springfield.shm assets/springfield.stx
 gcc -std=c99 -Wall -Wextra -Werror tests/clip_test.c src/clip.c src/texture.c src/mesh.c -lm -o /tmp/shar-clip-test
 /tmp/shar-clip-test assets/springfield.shm assets/springfield.stx
+gcc -std=c99 -Wall -Wextra -Werror tests/vehicle_test.c src/clip.c src/texture.c src/mesh.c -lm -o /tmp/shar-vehicle-test
+/tmp/shar-vehicle-test assets/compact.shm assets/compact.stx
 python3 tools/audit_source.py /workspace/shar-source
 ```
 
@@ -107,15 +113,16 @@ archive. Its README points to a separate archive for additional build files.
 Next milestones:
 
 1. Download/inventory the supplied additional archive when its storage server is accessible.
-2. Extend the Pure3D importer with vehicle hierarchy support,
-   then replace the placeholder car with one original vehicle.
+2. Add vehicle hierarchy and wheel animation support, and import a complete
+   drivable vehicle asset when available.
 3. Refine collision, then add on-foot movement, streaming,
    audio, and mission execution in
    separately testable stages; reuse compatible original logic where practical.
 
 The MEGA API lists one 3,399,653,232-byte archive named
 `The Simpsons Hit & Run - PC.zip` under a compiled-PC folder. Archive contents
-have not been inspected: its current download server,
-`gfs214n104.userstorage.mega.co.nz`, returns HTTP 403. Its required network entry
-was saved in environment settings alongside `mega.nz` and `g.api.mega.co.nz`.
+have not been inspected. Its storage URLs have used
+`gfs214n104.userstorage.mega.co.nz` and, on a fresh request,
+`gfs270n356.userstorage.mega.co.nz`. The fresh server returned HTTP 403; required
+network entries are saved alongside `mega.nz` and `g.api.mega.co.nz`.
 Do not assume the archive contains missing middleware until contents are verified.

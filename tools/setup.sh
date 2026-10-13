@@ -28,3 +28,5 @@ gcc -std=c99 -Wall -Wextra -Werror tests/texture_test.c src/texture.c src/mesh.c
 /tmp/shar-texture-test assets/springfield.shm assets/springfield.stx
 gcc -std=c99 -Wall -Wextra -Werror tests/clip_test.c src/clip.c src/texture.c src/mesh.c -lm -o /tmp/shar-clip-test
 /tmp/shar-clip-test assets/springfield.shm assets/springfield.stx
+gcc -std=c99 -Wall -Wextra -Werror tests/vehicle_test.c src/clip.c src/texture.c src/mesh.c -lm -o /tmp/shar-vehicle-test
+/tmp/shar-vehicle-test assets/compact.shm assets/compact.stx

@@ -24,6 +24,8 @@ static StaticMesh world_mesh = {0};
 static CollisionWorld collision_world = {0};
 static TexturedScene textured_scene = {0};
 static ClippedScene clipped_scene = {0};
+static StaticMesh vehicle_mesh = {0};
+static TexturedScene vehicle_textures = {0};
 static int software_clip_active = 0;
 static unsigned int measured_fps = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
@@ -70,6 +72,50 @@ static void box(float x, float y, float z, float width, float height,
                    36, 0, vertices);
 }
 
+static void draw_textured(const TexturedScene *scene,const ClippedScene *clipped)
+{
+    sceGuEnable(GU_TEXTURE_2D);
+    sceGuEnable(GU_ALPHA_TEST);
+    sceGuAlphaFunc(GU_GREATER,0,0xff);
+    sceGuTexMode(GU_PSM_5551,0,0,1);
+    sceGuTexFunc(GU_TFX_MODULATE,GU_TCC_RGBA);
+    sceGuTexFilter(GU_LINEAR,GU_LINEAR);
+    sceGuTexWrap(GU_REPEAT,GU_REPEAT);
+    sceGuTexScale(1,1);
+    sceGuTexOffset(0,0);
+    uint32_t previous_texture=0xffffffffu;
+    uint32_t batch_count=clipped?clipped->batch_count:scene->batch_count;
+    const TextureBatch *batches=clipped?clipped->batches:scene->batches;
+    for (uint32_t i=0;i<batch_count;++i) {
+        TextureBatch b=batches[i];
+        const TexturedVertex *vertices=clipped && !clipped->original[i]?clipped->vertices:scene->vertices;
+        if (b.texture!=previous_texture) {
+            SceneTexture t=scene->textures[b.texture];
+            sceGuTexImage(0,t.width,t.height,t.width,t.pixels);
+            sceGuTexFlush();
+            previous_texture=b.texture;
+        }
+        for (uint32_t offset=0;offset<b.count;) {
+            uint32_t count=b.count-offset;
+            if (count>65535) count=65535;
+            sceGumDrawArray(GU_TRIANGLES,GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                           count,0,vertices+b.first+offset);
+            offset+=count;
+        }
+    }
+    sceGuDisable(GU_ALPHA_TEST);
+    sceGuDisable(GU_TEXTURE_2D);
+}
+
+static void flush_textures(const TexturedScene *scene)
+{
+    sceKernelDcacheWritebackRange(scene->vertices,scene->count*sizeof(TexturedVertex));
+    for (uint32_t i=0;i<scene->texture_count;++i) {
+        SceneTexture t=scene->textures[i];
+        sceKernelDcacheWritebackRange(t.pixels,t.width*t.height*2);
+    }
+}
+
 static void render(const Car *car)
 {
     sceGuStart(GU_DIRECT, commands);
@@ -101,38 +147,7 @@ static void render(const Car *car)
         sceGumLoadIdentity();
         /* Persistent aligned mesh memory is flushed once after loading. */
         if (textured_scene.vertices) {
-            sceGuEnable(GU_TEXTURE_2D);
-            sceGuEnable(GU_ALPHA_TEST);
-            sceGuAlphaFunc(GU_GREATER,0,0xff);
-            sceGuTexMode(GU_PSM_5551,0,0,1);
-            sceGuTexFunc(GU_TFX_MODULATE,GU_TCC_RGBA);
-            sceGuTexFilter(GU_LINEAR,GU_LINEAR);
-            sceGuTexWrap(GU_REPEAT,GU_REPEAT);
-            sceGuTexScale(1,1);
-            sceGuTexOffset(0,0);
-            uint32_t previous_texture=0xffffffffu;
-            uint32_t batch_count=software_clip_active?clipped_scene.batch_count:textured_scene.batch_count;
-            TextureBatch *batches=software_clip_active?clipped_scene.batches:textured_scene.batches;
-            for (uint32_t i=0;i<batch_count;++i) {
-                TextureBatch b=batches[i];
-                TexturedVertex *vertices=software_clip_active && !clipped_scene.original[i]?
-                                        clipped_scene.vertices:textured_scene.vertices;
-                if (b.texture!=previous_texture) {
-                    SceneTexture t=textured_scene.textures[b.texture];
-                    sceGuTexImage(0,t.width,t.height,t.width,t.pixels);
-                    sceGuTexFlush();
-                    previous_texture=b.texture;
-                }
-                for (uint32_t offset=0;offset<b.count;) {
-                    uint32_t count=b.count-offset;
-                    if (count>65535) count=65535; /* GE primitive count is 16-bit */
-                    sceGumDrawArray(GU_TRIANGLES,GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                                   count,0,vertices+b.first+offset);
-                    offset+=count;
-                }
-            }
-            sceGuDisable(GU_ALPHA_TEST);
-            sceGuDisable(GU_TEXTURE_2D);
+            draw_textured(&textured_scene,software_clip_active?&clipped_scene:NULL);
         } else {
             sceGumDrawArray(GU_TRIANGLES,GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
                            world_mesh.count,0,world_mesh.vertices);
@@ -152,8 +167,19 @@ static void render(const Car *car)
             }
         }
     }
-    box(car->x,car->y+0.65f,car->z,1.8f,0.8f,3.6f,car->heading,0xff40c8ff);
-    box(car->x,car->y+1.3f,car->z,1.5f,0.65f,1.8f,car->heading,0xff654d32);
+    if (vehicle_textures.vertices) {
+        sceGumMatrixMode(GU_MODEL);
+        sceGumLoadIdentity();
+        ScePspFVector3 position={car->x,car->y,car->z};
+        sceGumTranslate(&position);
+        sceGumRotateY(car->heading);
+        /* A rigid local mesh stays in front of the chase camera. It does not
+           enter the cached static-world clipping or collision data. */
+        draw_textured(&vehicle_textures,NULL);
+    } else {
+        box(car->x,car->y+0.65f,car->z,1.8f,0.8f,3.6f,car->heading,0xff40c8ff);
+        box(car->x,car->y+1.3f,car->z,1.5f,0.65f,1.8f,car->heading,0xff654d32);
+    }
     sceGuFinish();
     sceGuSync(0,0);
     pspDebugScreenSetOffset(draw_offset);
@@ -165,6 +191,7 @@ static void render(const Car *car)
                         (world_mesh.vertices ? "Textures OFF | Springfield geometry only    " : "Scenery missing/invalid: test-ground fallback"));
     pspDebugScreenPrintf("%s\n",collision_world.triangles ? "Collision ON | terrain following ON         " : "Collision OFF | terrain following OFF       ");
     pspDebugScreenPrintf("%s\n",software_clip_active ? "Software clipping ON                        " : "Software clipping OFF                       ");
+    pspDebugScreenPrintf("%s\n",vehicle_textures.vertices ? "Vehicle: CompactA                           " : "Vehicle: placeholder (asset load failed)     ");
     sceDisplayWaitVblankStart();
     draw_offset = (unsigned int)sceGuSwapBuffers();
 }
@@ -190,11 +217,14 @@ int main(int argc, char *argv[])
     if (world_mesh.vertices) collision_build(&collision_world,&world_mesh);
     if (texture_load(&textured_scene,&world_mesh,"assets/springfield.stx")==0) {
         clip_create(&clipped_scene,&textured_scene);
-        sceKernelDcacheWritebackRange(textured_scene.vertices,textured_scene.count*sizeof(TexturedVertex));
-        for (uint32_t i=0;i<textured_scene.texture_count;++i) {
-            SceneTexture t=textured_scene.textures[i];
-            sceKernelDcacheWritebackRange(t.pixels,t.width*t.height*2);
-        }
+        flush_textures(&textured_scene);
+    }
+    if (mesh_load(&vehicle_mesh,"assets/compact.shm")==0 &&
+            texture_load(&vehicle_textures,&vehicle_mesh,"assets/compact.stx")==0) {
+        flush_textures(&vehicle_textures);
+    } else {
+        texture_free(&vehicle_textures);
+        mesh_free(&vehicle_mesh);
     }
     pspDebugScreenInit();
     sceGuInit();
@@ -262,6 +292,8 @@ int main(int argc, char *argv[])
         render(&car);
     }
     sceGuTerm();
+    texture_free(&vehicle_textures);
+    mesh_free(&vehicle_mesh);
     clip_free(&clipped_scene);
     texture_free(&textured_scene);
     collision_free(&collision_world);
