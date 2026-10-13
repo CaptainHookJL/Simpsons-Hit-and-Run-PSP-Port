@@ -10,6 +10,7 @@
 #include "driving.h"
 #include "mesh.h"
 #include "collision.h"
+#include "texture.h"
 
 PSP_MODULE_INFO("SHAR Driving Prototype", 0, 0, 1);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
@@ -20,6 +21,7 @@ static unsigned int __attribute__((aligned(16))) commands[65536];
 static unsigned int draw_offset = 0;
 static StaticMesh world_mesh = {0};
 static CollisionWorld collision_world = {0};
+static TexturedScene textured_scene = {0};
 static unsigned int measured_fps = 0;
 typedef struct { unsigned int color; float x, y, z; } Vertex;
 
@@ -86,8 +88,34 @@ static void render(const Car *car)
         sceGumMatrixMode(GU_MODEL);
         sceGumLoadIdentity();
         /* Persistent aligned mesh memory is flushed once after loading. */
-        sceGumDrawArray(GU_TRIANGLES,GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
-                       world_mesh.count,0,world_mesh.vertices);
+        if (textured_scene.vertices) {
+            sceGuEnable(GU_TEXTURE_2D);
+            sceGuEnable(GU_ALPHA_TEST);
+            sceGuAlphaFunc(GU_GREATER,0,0xff);
+            sceGuTexMode(GU_PSM_5551,0,0,1);
+            sceGuTexFunc(GU_TFX_MODULATE,GU_TCC_RGBA);
+            sceGuTexFilter(GU_LINEAR,GU_LINEAR);
+            sceGuTexWrap(GU_REPEAT,GU_REPEAT);
+            sceGuTexScale(1,1);
+            sceGuTexOffset(0,0);
+            uint32_t previous_texture=0xffffffffu;
+            for (uint32_t i=0;i<textured_scene.batch_count;++i) {
+                TextureBatch b=textured_scene.batches[i];
+                if (b.texture!=previous_texture) {
+                    SceneTexture t=textured_scene.textures[b.texture];
+                    sceGuTexImage(0,t.width,t.height,t.width,t.pixels);
+                    sceGuTexFlush();
+                    previous_texture=b.texture;
+                }
+                sceGumDrawArray(GU_TRIANGLES,GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                               b.count,0,textured_scene.vertices+b.first);
+            }
+            sceGuDisable(GU_ALPHA_TEST);
+            sceGuDisable(GU_TEXTURE_2D);
+        } else {
+            sceGumDrawArray(GU_TRIANGLES,GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D,
+                           world_mesh.count,0,world_mesh.vertices);
+        }
     } else {
         box(0,-0.6f,0,240,1,240,0,0xff53864b);
         box(0,-0.04f,0,14,0.1f,230,0,0xff555555);
@@ -112,7 +140,8 @@ static void render(const Car *car)
     pspDebugScreenPrintf("SHAR PSP | %3d km/h | %2u FPS              \n", (int)(fabsf(car->speed) * 3.6f),measured_fps);
     pspDebugScreenPrintf("X: gas  Square: brake  Circle: reverse      \n");
     pspDebugScreenPrintf("Stick/D-pad: steer  Start: reset  Home: exit \n");
-    pspDebugScreenPrintf("%s\n",world_mesh.vertices ? "Springfield geometry sample (no textures)   " : "Scenery missing/invalid: test-ground fallback");
+    pspDebugScreenPrintf("%s\n",textured_scene.vertices ? "Springfield textures ON                     " :
+                        (world_mesh.vertices ? "Textures OFF | Springfield geometry only    " : "Scenery missing/invalid: test-ground fallback"));
     pspDebugScreenPrintf("%s\n",collision_world.triangles ? "Collision ON | terrain following ON         " : "Collision OFF | terrain following OFF       ");
     sceDisplayWaitVblankStart();
     draw_offset = (unsigned int)sceGuSwapBuffers();
@@ -137,6 +166,13 @@ int main(int argc, char *argv[])
     if (mesh_load(&world_mesh,"assets/springfield.shm") == 0)
         sceKernelDcacheWritebackRange(world_mesh.vertices,world_mesh.count*sizeof(MeshVertex));
     if (world_mesh.vertices) collision_build(&collision_world,&world_mesh);
+    if (texture_load(&textured_scene,&world_mesh,"assets/springfield.stx")==0) {
+        sceKernelDcacheWritebackRange(textured_scene.vertices,textured_scene.count*sizeof(TexturedVertex));
+        for (uint32_t i=0;i<textured_scene.texture_count;++i) {
+            SceneTexture t=textured_scene.textures[i];
+            sceKernelDcacheWritebackRange(t.pixels,t.width*t.height*2);
+        }
+    }
     pspDebugScreenInit();
     sceGuInit();
     sceGuStart(GU_DIRECT,commands);
@@ -200,6 +236,7 @@ int main(int argc, char *argv[])
         render(&car);
     }
     sceGuTerm();
+    texture_free(&textured_scene);
     collision_free(&collision_world);
     mesh_free(&world_mesh);
     sceKernelExitGame();

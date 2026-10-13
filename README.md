@@ -12,9 +12,9 @@ details](SOURCE_REUSE.md) for attribution, changes, and the boundaries of this r
 [Download the installation ZIP](https://github.com/CaptainHookJL/Simpsons-Hit-and-Run-PSP-Port/raw/refs/heads/main/downloads/SHAR-PSP-Prototype.zip).
 Extract it and copy the `PSP` folder to your Memory Stick's root, then launch
 SHAR PSP from Game > Memory Stick. Requires custom firmware supporting unsigned
-homebrew. The previous scenery build (`e7f80f7`) was reported by the user to run
-at 60 FPS with geometry loading correctly on a PSP-3000 with ARK 5. The newer
-collision build still needs a hardware performance check.
+homebrew. The user reported both scenery (`e7f80f7`) and collision (`3d41e77`)
+builds running at 60 FPS on a PSP-3000 with ARK 5. The new textured build still
+needs a hardware performance check.
 
 ## Build
 
@@ -42,16 +42,17 @@ The target uses an 8 MiB heap and does not request the PSP Slim expanded memory.
 Controls: analog stick or D-pad steers, Cross accelerates, Square brakes,
 Circle reverses, Start resets, and Home exits on PSP.
 
-The installation ZIP includes untextured scenery near the Simpsons house,
+The installation ZIP includes textured scenery near the Simpsons house,
 converted from the supplied source checkout. The car is still placeholder geometry.
-The screen shows scene load status and measured FPS. If scenery fails to load,
+The screen shows texture/collision state and measured FPS. If scenery fails to load,
 it falls back to the original test ground. When scenery and the collision grid
 load, the screen shows `Collision ON | terrain following ON`. The car follows
 nearby ground heights and stops on contact with steep scenery surfaces. It also
 stops before leaving the imported ground; the older test-ground boundary remains
 in the fallback mode. Missions, pedestrian gameplay, sound, and original
-suspension/force physics are absent. Collision and its performance still need
-hardware validation.
+suspension/force physics are absent. If textures fail to load, the original
+untextured geometry remains visible. Texture mapping and its performance still
+need hardware validation.
 See [asset provenance and conversion instructions](assets/README.md).
 
 Collision uses two spheres to approximate the placeholder car and infers ground
@@ -71,6 +72,8 @@ gcc -std=c99 -Wall -Wextra -Werror tests/mesh_test.c src/mesh.c -lm -o /tmp/shar
 /tmp/shar-mesh-test assets/springfield.shm
 gcc -std=c99 -Wall -Wextra -Werror tests/collision_test.c src/collision.c src/mesh.c src/driving.c src/upstream/vehicle_steering.c -lm -o /tmp/shar-collision-test
 /tmp/shar-collision-test assets/springfield.shm
+gcc -std=c99 -Wall -Wextra -Werror tests/texture_test.c src/texture.c src/mesh.c -lm -o /tmp/shar-texture-test
+/tmp/shar-texture-test assets/springfield.shm assets/springfield.stx
 python3 tools/audit_source.py /workspace/shar-source
 ```
 
@@ -90,9 +93,9 @@ archive. Its README points to a separate archive for additional build files.
 
 Next milestones:
 
-1. Check the collision build on PSP, including impacts, reverse escape, terrain height, and FPS.
+1. Check the textured build on PSP, including texture mapping, cutouts, collision, and FPS.
 2. Download/inventory the supplied additional archive when its storage server is accessible.
-3. Extend the static Pure3D importer with textures and vehicle hierarchy support,
+3. Extend the Pure3D importer with vehicle hierarchy support,
    then replace the placeholder car with one original vehicle.
 4. Refine collision, then add on-foot movement, streaming,
    audio, and mission execution in

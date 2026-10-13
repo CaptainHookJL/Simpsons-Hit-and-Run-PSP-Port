@@ -58,15 +58,16 @@ Start: reset vehicle
 Home/PS: quit
 
 The screen shows speed, controls, and scenery load status. This package includes
-untextured original Springfield geometry near the Simpsons house. The car remains
+textured original Springfield geometry near the Simpsons house. The car remains
 a placeholder. Ground following and approximate scenery collision are enabled
 when the grid loads; the screen shows Collision ON. The car stops at walls and
 the edge of imported ground. Missions, sound, and on-foot gameplay are absent.
 If scenery is missing or invalid, the screen identifies the test-ground fallback.
 
-The previous scenery build was reported to run at 60 FPS on PSP-3000 with ARK 5.
-The new collision build passes native tests but still needs hardware validation.
-Drive toward the house, reverse away from a wall, and watch the FPS counter.
+The previous collision build was reported to run at 60 FPS on PSP-3000 with ARK 5.
+The new textured build passes native tests but still needs hardware validation.
+Check that the HUD says Springfield textures ON, inspect the house/road textures,
+drive toward the house, reverse away from a wall, and watch the FPS counter.
 Collision approximates the car with two spheres and uses rendered geometry,
 not original collision volumes. The camera can still clip through scenery.
 If launch fails, record your PSP model, firmware and exact error code.
@@ -79,8 +80,10 @@ with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED) as arch
     archive.writestr("THIRD_PARTY.md", (ROOT / "THIRD_PARTY.md").read_bytes())
     archive.writestr("ASSETS.md", (ROOT / "assets/README.md").read_bytes())
     archive.writestr("PSP/GAME/SHARPSP/assets/springfield.shm", (ROOT / "assets/springfield.shm").read_bytes())
+    archive.writestr("PSP/GAME/SHARPSP/assets/springfield.stx", (ROOT / "assets/springfield.stx").read_bytes())
 with zipfile.ZipFile(args.output) as archive:
     if (archive.testzip() is not None or archive.read("PSP/GAME/SHARPSP/EBOOT.PBP") != binary
-        or archive.read("PSP/GAME/SHARPSP/assets/springfield.shm") != (ROOT / "assets/springfield.shm").read_bytes()):
+        or archive.read("PSP/GAME/SHARPSP/assets/springfield.shm") != (ROOT / "assets/springfield.shm").read_bytes()
+        or archive.read("PSP/GAME/SHARPSP/assets/springfield.stx") != (ROOT / "assets/springfield.stx").read_bytes()):
         parser.error("Package verification failed")
 print(f"Packaged {args.output}: MIPS PRX, standard PSP memory, ZIP integrity verified")

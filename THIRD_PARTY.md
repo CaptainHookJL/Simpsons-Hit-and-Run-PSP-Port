@@ -4,6 +4,8 @@ The new Python converter checks PC Pure3D binary structures against
 [Hampo/LuaP3DLib](https://github.com/Hampo/LuaP3DLib) at
 `7a9587a58cb56148db15ba5ffd882c76c144423f`, particularly Mesh,
 OldPrimitiveGroup, PositionList, IndexList, and ColourList chunks.
+Texture, Image, ImageData, Shader, ShaderTextureParameter, and UVList layouts
+were also consulted for the texture sidecar converter.
 Credits: Proddy (Lua implementation), Lucas Cardellini (chunk structures),
 and EnAppelsin (original P3D Lua idea). The Lua runtime is not bundled.
 
