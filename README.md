@@ -12,17 +12,11 @@ details](SOURCE_REUSE.md) for attribution, changes, and the boundaries of this r
 [Download the installation ZIP](https://github.com/CaptainHookJL/Simpsons-Hit-and-Run-PSP-Port/raw/refs/heads/main/downloads/SHAR-PSP-Prototype.zip).
 Extract it and copy the `PSP` folder to your Memory Stick's root, then launch
 SHAR PSP from Game > Memory Stick. Requires custom firmware supporting unsigned
-homebrew. The user reported scenery (`e7f80f7`), collision (`3d41e77`), and textured
-(`4722096`) builds running at 60 FPS on a PSP-3000 with ARK 5. The textured build
-showed visible geometry popping while driving. Enabling GE clip planes alone did
-not resolve the reported holes in the road. This build clips textured world
-triangles against the camera's near/far and side planes in software before GPU
-submission. The visible polygons retain interpolated UVs and vertex colours.
-The user confirmed that software-clipped build `116afb7` removes the holes but
-runs at 30–60 FPS. This version caches mesh bounds, draws fully visible meshes
-from their original buffers, and clips only triangles at relevant view planes.
-Its hardware performance still needs checking. The imported area remains a
-bounded scenery sample.
+homebrew. The user confirmed optimized build `716b316` running at locked 60 FPS
+on a PSP-3000 with ARK 5. It clips textured world triangles at camera planes,
+preserving UVs and colours, with cached bounds and direct draws for fully visible
+meshes. See [hardware validation](docs/HARDWARE_VALIDATION.md) for the tested
+build and the limits of that evidence. The imported area remains a bounded sample.
 
 ## Build
 
@@ -59,8 +53,8 @@ nearby ground heights and stops on contact with steep scenery surfaces. It also
 stops before leaving the imported ground; the older test-ground boundary remains
 in the fallback mode. Missions, pedestrian gameplay, sound, and original
 suspension/force physics are absent. If textures fail to load, the original
-untextured geometry remains visible. View-boundary clipping and its performance
-still need another hardware check.
+untextured geometry remains visible. Recheck the same driving route after rendering
+or asset changes to confirm road continuity and the locked-60-FPS baseline.
 See [asset provenance and conversion instructions](assets/README.md).
 
 Collision uses two spheres to approximate the placeholder car and infers ground
@@ -112,11 +106,10 @@ archive. Its README points to a separate archive for additional build files.
 
 Next milestones:
 
-1. Check the optimized clipping build on PSP, watching for stable FPS and intact roads.
-2. Download/inventory the supplied additional archive when its storage server is accessible.
-3. Extend the Pure3D importer with vehicle hierarchy support,
+1. Download/inventory the supplied additional archive when its storage server is accessible.
+2. Extend the Pure3D importer with vehicle hierarchy support,
    then replace the placeholder car with one original vehicle.
-4. Refine collision, then add on-foot movement, streaming,
+3. Refine collision, then add on-foot movement, streaming,
    audio, and mission execution in
    separately testable stages; reuse compatible original logic where practical.
 
